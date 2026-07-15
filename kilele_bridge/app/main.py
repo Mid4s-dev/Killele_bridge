@@ -110,7 +110,6 @@ ALLOWED_HOSTS = (
     ["*"]
     if settings.app_env == "development"
     else [
-        "kilele-*.herokuapp.com",
         "*.herokuapp.com",
         "kilelebridge.co.ke",
         "www.kilelebridge.co.ke",
