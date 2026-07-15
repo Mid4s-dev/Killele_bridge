@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     # Application
     app_env: str = "development"
     app_secret_key: str
+    frontend_url: str = "https://kilele-324a861f2574.herokuapp.com"
 
     # Database
     database_url: str
@@ -15,14 +16,14 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60
 
     # IntaSend
-    intasend_publishable_key: str
-    intasend_secret_key: str
+    intasend_publishable_key: str = ""
+    intasend_secret_key: str = ""
     intasend_test_mode: bool = True
 
     # Payment
     registration_fee_kes: int = 100
-    payment_redirect_url: str
-    payment_webhook_secret: str
+    payment_redirect_url: str = "https://kilele-324a861f2574.herokuapp.com/payment/success"
+    payment_webhook_secret: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

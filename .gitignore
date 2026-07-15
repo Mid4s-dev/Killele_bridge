@@ -1,0 +1,54 @@
+# =============================================================================
+# Kilele Bridge — root .gitignore
+# =============================================================================
+
+# ── Secrets — NEVER commit these ─────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+*.pfx
+
+# ── Python ────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+pip-log.txt
+
+# ── Node / Next.js ────────────────────────────────────────────────────────
+node_modules/
+frontend/.next/
+frontend/out/          # built at image-build time; not committed
+frontend/.env.local
+npm-debug.log*
+yarn-error.log*
+
+# ── Alembic ───────────────────────────────────────────────────────────────
+# Keep versions/ but skip compiled cache
+kilele_bridge/alembic/versions/__pycache__/
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Docker ────────────────────────────────────────────────────────────────
+# Don't ignore Dockerfile or heroku.yml — those must be committed
+.dockerignore   # keep this comment; the file itself is committed

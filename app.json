@@ -1,0 +1,76 @@
+{
+  "name": "kilele",
+  "description": "Kilele Bridge — Kenyan freelancer coaching platform (FastAPI + Next.js static export, single Heroku dyno)",
+  "keywords": ["python", "fastapi", "nextjs", "mysql"],
+  "stack": "container",
+  "env": {
+    "APP_ENV": {
+      "description": "Runtime environment. Set to 'production' on Heroku.",
+      "value": "production",
+      "required": true
+    },
+    "APP_SECRET_KEY": {
+      "description": "64+ character random secret used to sign JWTs. Generate with: python3 -c \"import secrets; print(secrets.token_hex(64))\"",
+      "required": true,
+      "generator": "secret"
+    },
+    "DATABASE_URL": {
+      "description": "Aiven MySQL connection string. Format: mysql+pymysql://user:pass@host:port/db?ssl_verify_cert=false&ssl_verify_identity=false",
+      "required": true
+    },
+    "JWT_ALGORITHM": {
+      "description": "JWT signing algorithm.",
+      "value": "HS256",
+      "required": false
+    },
+    "JWT_ACCESS_TOKEN_EXPIRE_MINUTES": {
+      "description": "JWT lifetime in minutes.",
+      "value": "60",
+      "required": false
+    },
+    "INTASEND_PUBLISHABLE_KEY": {
+      "description": "IntaSend publishable key from https://developers.intasend.com/",
+      "required": true
+    },
+    "INTASEND_SECRET_KEY": {
+      "description": "IntaSend secret key. Keep this private — never expose client-side.",
+      "required": true
+    },
+    "INTASEND_TEST_MODE": {
+      "description": "Set to 'false' for live payments, 'true' for IntaSend sandbox.",
+      "value": "false",
+      "required": false
+    },
+    "REGISTRATION_FEE_KES": {
+      "description": "One-time registration fee in KES.",
+      "value": "100",
+      "required": false
+    },
+    "PAYMENT_REDIRECT_URL": {
+      "description": "URL IntaSend redirects to after checkout. Must match your Heroku app URL.",
+      "value": "https://kilele-324a861f2574.herokuapp.com/payment/success",
+      "required": true
+    },
+    "PAYMENT_WEBHOOK_SECRET": {
+      "description": "HMAC-SHA256 secret for verifying IntaSend webhook signatures. Generate with: python3 -c \"import secrets; print(secrets.token_hex(32))\"",
+      "required": true
+    },
+    "FRONTEND_URL": {
+      "description": "Canonical public URL of the app. Used for CORS allow-list in production.",
+      "value": "https://kilele-324a861f2574.herokuapp.com",
+      "required": true
+    },
+    "WEB_CONCURRENCY": {
+      "description": "Number of gunicorn workers. 1 is correct for a free/eco single dyno.",
+      "value": "1",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "eco"
+    }
+  },
+  "buildpacks": []
+}
