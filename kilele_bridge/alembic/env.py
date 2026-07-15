@@ -1,35 +1,67 @@
 """
 Alembic environment configuration.
 
-Reads DATABASE_URL from the application's Settings (which loads from .env)
-so the migration target always matches the running application's database.
+Reads DATABASE_URL directly from the environment (os.environ) so that
+the migration can run in the Heroku release phase where config vars are
+injected as real environment variables — not from a .env file.
+
+Falls back to pydantic Settings (which reads .env) for local development.
 """
-import sys
 import os
+import sys
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
-# Make the app package importable from this script
+# Make the app package importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.config import get_settings
-from app.database import Base
+# Import Base — this registers all table metadata.
+# database.py no longer builds the engine at import time, so this is safe.
+from app.database import Base  # noqa: E402
+import app.models               # noqa: F401, E402 — registers all ORM models on Base
 
-# Import all models so their tables are registered on Base.metadata
-import app.models  # noqa: F401
 
 # ---------------------------------------------------------------------------
-# Alembic Config object (gives access to values in alembic.ini)
+# Resolve DATABASE_URL
 # ---------------------------------------------------------------------------
+
+def _get_database_url() -> str:
+    """
+    Priority:
+    1. DATABASE_URL environment variable (Heroku release dyno / production)
+    2. pydantic Settings / .env file (local dev)
+    """
+    url = os.environ.get("DATABASE_URL", "")
+    if not url:
+        from app.config import get_settings
+        url = get_settings().database_url
+    return url
+
+
+def _strip_ssl_params(url: str) -> str:
+    for fragment in (
+        "?ssl_verify_cert=false&ssl_verify_identity=false",
+        "&ssl_verify_cert=false&ssl_verify_identity=false",
+        "?ssl_verify_cert=false",
+        "?ssl_verify_identity=false",
+        "?ssl-mode=REQUIRED",
+    ):
+        url = url.replace(fragment, "")
+    return url
+
+
+# ---------------------------------------------------------------------------
+# Alembic config
+# ---------------------------------------------------------------------------
+
 config = context.config
 
-# Override the sqlalchemy.url token with the value from our Settings
-settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+raw_url = _get_database_url()
+clean_url = _strip_ssl_params(raw_url)
+config.set_main_option("sqlalchemy.url", clean_url)
 
-# Set up Python logging from alembic.ini
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
@@ -37,14 +69,10 @@ target_metadata = Base.metadata
 
 
 # ---------------------------------------------------------------------------
-# Run migrations
+# Migration runners
 # ---------------------------------------------------------------------------
 
 def run_migrations_offline() -> None:
-    """
-    Emit migration SQL to stdout without connecting to the database.
-    Useful for reviewing DDL before applying it.
-    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -58,19 +86,22 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """
-    Connect to the database and apply migrations in a transaction.
-    """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    needs_ssl = any(
+        kw in raw_url
+        for kw in ("ssl_verify_cert", "ssl_verify_identity", "ssl-mode")
+    )
+    connect_args = {"ssl": {"verify_cert": False}} if needs_ssl else {}
+
+    connectable = create_engine(
+        clean_url,
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            compare_type=True,         # detect column type changes
+            compare_type=True,
             compare_server_default=True,
         )
         with context.begin_transaction():
