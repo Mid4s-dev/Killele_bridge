@@ -133,17 +133,17 @@ function StepUpload({
   backFile,
   errors,
   onFront,
-  onBack,
+  onBackFile,
   onNext,
-  onBack: onPrev,
+  onPrev,
 }: {
   frontFile: File | null;
   backFile: File | null;
   errors: UploadErrors;
   onFront: (f: File | null) => void;
-  onBack: (f: File | null) => void;
+  onBackFile: (f: File | null) => void;
   onNext: () => void;
-  onBack: () => void;
+  onPrev: () => void;
 }) {
   return (
     <div className="space-y-6 animate-fade-in">
@@ -169,7 +169,7 @@ function StepUpload({
           label="Back of National ID"
           side="back"
           file={backFile}
-          onFileSelect={onBack}
+          onFileSelect={onBackFile}
           error={errors.back}
         />
       </div>
@@ -415,11 +415,11 @@ export default function KycPage() {
                       backFile={backFile}
                       errors={uploadErrors}
                       onFront={setFrontFile}
-                      onBack={setBackFile}
+                      onBackFile={setBackFile}
                       onNext={() => {
                         if (validateUpload()) setStep(3);
                       }}
-                      onBack={() => setStep(1)}
+                      onPrev={() => setStep(1)}
                     />
                   )}
                   {step === 3 && (
