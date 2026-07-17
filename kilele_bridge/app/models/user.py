@@ -41,7 +41,7 @@ class User(Base):
 
     # Membership
     role = Column(
-        Enum(UserRole, name="user_role_enum"),
+        Enum(UserRole, name="user_role_enum", values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=UserRole.FREE,
         server_default=UserRole.FREE.value,
