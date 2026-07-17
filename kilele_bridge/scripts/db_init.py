@@ -30,13 +30,14 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.core.security import hash_password
-from app.database import Base, SessionLocal, engine
+from app.database import Base, get_session_factory, get_engine
 from app.models import User, Payment  # noqa: F401 — registers models on Base
 from app.models.user import UserRole
 
 
 def create_tables() -> None:
     print("Creating all tables from SQLAlchemy metadata...")
+    engine = get_engine()
     Base.metadata.create_all(bind=engine)
     print("Done.")
 
@@ -55,6 +56,7 @@ def seed_admin() -> None:
         print("ERROR: Admin password must be at least 8 characters.", file=sys.stderr)
         sys.exit(1)
 
+    SessionLocal = get_session_factory()
     db: Session = SessionLocal()
     try:
         existing = db.query(User).filter(User.email == admin_email.lower()).first()

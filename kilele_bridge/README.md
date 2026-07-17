@@ -91,6 +91,7 @@ cp .env.example .env
 |---|---|---|
 | `APP_ENV` | yes | `development` or `production` |
 | `APP_SECRET_KEY` | yes | Random string ≥ 64 chars — signs JWTs |
+| `FRONTEND_URL` | yes | Public URL of the React/Next frontend, used for CORS |
 | `DATABASE_URL` | yes | `mysql+pymysql://user:pass@host:3306/dbname` |
 | `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | no | Default: `60` |
 | `INTASEND_PUBLISHABLE_KEY` | yes | From IntaSend dashboard |
@@ -99,6 +100,8 @@ cp .env.example .env
 | `REGISTRATION_FEE_KES` | no | Default: `100` |
 | `PAYMENT_REDIRECT_URL` | yes | Where users land after completing payment |
 | `PAYMENT_WEBHOOK_SECRET` | yes | Random string — verifies IntaSend webhook signatures |
+
+For Heroku, set `FRONTEND_URL` to the deployed frontend app URL and `PAYMENT_REDIRECT_URL` to that app's public success page. The backend accepts Heroku hostnames in production via `*.herokuapp.com`, so custom domains only need to be added if you use them.
 
 **Generate secure secrets:**
 ```bash

@@ -37,9 +37,14 @@ def _get_intasend_client() -> APIService:
     Instantiate the IntaSend SDK client.
     test_mode=True routes requests to the IntaSend sandbox.
     """
+    if not settings.intasend_publishable_key or not settings.intasend_secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment gateway is not configured.",
+        )
     return APIService(
         publishable_key=settings.intasend_publishable_key,
-        secret_key=settings.intasend_secret_key,
+        token=settings.intasend_secret_key,
         test=settings.intasend_test_mode,
     )
 
@@ -158,6 +163,12 @@ def process_webhook(
     - Role upgrade only occurs when state == COMPLETE.
     - All updates use ORM queries — no dynamic SQL.
     """
+    if not settings.payment_webhook_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment webhook is not configured.",
+        )
+
     # ── 1. Verify signature ──────────────────────────────────────────────────
     if not _verify_webhook_signature(raw_body, signature_header):
         logger.warning("Webhook received with invalid signature — rejected.")
