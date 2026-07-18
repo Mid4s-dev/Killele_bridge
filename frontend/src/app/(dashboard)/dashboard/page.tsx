@@ -1,19 +1,40 @@
 "use client";
 
+/**
+ * Dashboard — Kilele Bridge command centre.
+ *
+ * Architecture:
+ *   - Hero welcome banner with dynamic CTA based on user role
+ *   - Stats row showing community metrics
+ *   - Gated Service Grid: all modules visible, locked ones redirect to /dashboard/payment
+ *   - Onboarding checklist + sidebar cards (KYC, payment, latest resource)
+ *
+ * Gated logic:
+ *   When user.role === "free", every service card shows a Lock badge and
+ *   clicking it navigates to /dashboard/payment. This is the frontend
+ *   AuthGuard. The backend independently enforces role via `require_member`.
+ */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
   BookOpen,
+  Briefcase,
   CheckCircle2,
   CreditCard,
+  Globe,
+  GraduationCap,
+  Layers3,
+  Lock,
   Menu,
+  MessageSquare,
+  Search,
   ShieldCheck,
+  Sparkles,
   TrendingUp,
   Users,
   Zap,
-  Lock,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +51,93 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { KycStatus, PaymentStatus } from "@/types";
+
+// ---------------------------------------------------------------------------
+// Service module definitions — the core of the gated content system
+// ---------------------------------------------------------------------------
+interface ServiceModule {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  href: string;
+  category: string;
+  highlight?: string;
+  accentColor: string;
+  accentBg: string;
+}
+
+const SERVICE_MODULES: ServiceModule[] = [
+  {
+    id: "lidar-training",
+    title: "LiDAR Training",
+    description:
+      "Master 3D spatial data annotation and point cloud labelling for autonomous vehicles and mapping projects.",
+    icon: Layers3,
+    href: "/dashboard/coaching",
+    category: "Training",
+    highlight: "Most Popular",
+    accentColor: "text-brand-600",
+    accentBg: "bg-brand-50 border-brand-100",
+  },
+  {
+    id: "job-leads",
+    title: "Job Leads",
+    description:
+      "Vetted, platform-compliant freelance opportunities curated for the Kenyan market — updated weekly.",
+    icon: Search,
+    href: "/dashboard/coaching",
+    category: "Opportunities",
+    highlight: "Updated Weekly",
+    accentColor: "text-orange-600",
+    accentBg: "bg-orange-50 border-orange-100",
+  },
+  {
+    id: "portfolio-review",
+    title: "Portfolio Review",
+    description:
+      "Get your Upwork profile, portfolio, and proposal strategy reviewed by experienced mentors.",
+    icon: Briefcase,
+    href: "/dashboard/coaching",
+    category: "Mentorship",
+    accentColor: "text-purple-600",
+    accentBg: "bg-purple-50 border-purple-100",
+  },
+  {
+    id: "client-comms",
+    title: "Client Communication",
+    description:
+      "Professional templates for proposals, follow-ups, and contract negotiations tailored to East Africa.",
+    icon: MessageSquare,
+    href: "/dashboard/coaching",
+    category: "Templates",
+    accentColor: "text-growth-600",
+    accentBg: "bg-growth-50 border-growth-100",
+  },
+  {
+    id: "pricing-framework",
+    title: "Pricing Framework",
+    description:
+      "Calculate your minimum viable rate, anchor against Kenyan living costs, and position for premium clients.",
+    icon: TrendingUp,
+    href: "/dashboard/coaching",
+    category: "Business",
+    accentColor: "text-emerald-600",
+    accentBg: "bg-emerald-50 border-emerald-100",
+  },
+  {
+    id: "global-platforms",
+    title: "Global Platforms Guide",
+    description:
+      "Navigate Upwork, Fiverr, Toptal, and emerging platforms with ethical, compliant strategies that work.",
+    icon: Globe,
+    href: "/dashboard/coaching",
+    category: "Strategy",
+    highlight: "New",
+    accentColor: "text-sky-600",
+    accentBg: "bg-sky-50 border-sky-100",
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Onboarding step helper
@@ -98,7 +206,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden group hover:shadow-md transition-all duration-200">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div>
@@ -106,12 +214,108 @@ function StatCard({
             <p className="font-display text-2xl font-bold mt-1">{value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
           </div>
-          <div className={cn("p-2.5 rounded-xl", color)}>
+          <div className={cn("p-2.5 rounded-xl transition-transform duration-200 group-hover:scale-110", color)}>
             <Icon className="h-5 w-5 text-white" />
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Service Module Card — the gated content card
+// ---------------------------------------------------------------------------
+function ServiceCard({
+  service,
+  isLocked,
+}: {
+  service: ServiceModule;
+  isLocked: boolean;
+}) {
+  const targetHref = isLocked ? "/dashboard/payment" : service.href;
+  const Icon = service.icon;
+
+  return (
+    <Link href={targetHref} className="group block h-full">
+      <Card
+        className={cn(
+          "h-full transition-all duration-300 hover:shadow-lg",
+          isLocked
+            ? "bg-muted/20 border-dashed border-muted-foreground/20 hover:border-brand-300"
+            : "hover:border-brand-300 hover:-translate-y-1"
+        )}
+      >
+        <CardContent className="p-5 flex flex-col h-full">
+          {/* Top row — icon + badges */}
+          <div className="flex items-start justify-between mb-4">
+            <div
+              className={cn(
+                "p-2.5 rounded-xl border transition-all duration-200",
+                isLocked
+                  ? "bg-muted border-border"
+                  : cn(service.accentBg, "group-hover:shadow-sm")
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-5 w-5 transition-colors",
+                  isLocked ? "text-muted-foreground" : service.accentColor
+                )}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              {service.highlight && !isLocked && (
+                <Badge
+                  variant="default"
+                  className="text-[10px] bg-brand-500 hover:bg-brand-600"
+                >
+                  {service.highlight}
+                </Badge>
+              )}
+              {isLocked ? (
+                <Badge variant="secondary" className="gap-1 bg-background border text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                  Locked
+                </Badge>
+              ) : (
+                <Badge variant="outline" className={cn("border", service.accentColor)}>
+                  {service.category}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Title + description */}
+          <h4
+            className={cn(
+              "font-semibold mb-1.5 transition-colors",
+              !isLocked && "group-hover:text-brand-600"
+            )}
+          >
+            {service.title}
+          </h4>
+          <p className="text-sm text-muted-foreground leading-relaxed flex-1 mb-4">
+            {service.description}
+          </p>
+
+          {/* Bottom CTA */}
+          {isLocked ? (
+            <div className="flex items-center gap-2 text-xs font-semibold text-brand-600 group-hover:underline">
+              <Zap className="h-3.5 w-3.5" />
+              Upgrade to Access
+              <ArrowRight className="h-3 w-3 ml-auto" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs font-semibold text-growth-600 group-hover:underline">
+              <Sparkles className="h-3.5 w-3.5" />
+              Enter Module
+              <ArrowRight className="h-3 w-3 ml-auto" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
@@ -131,8 +335,10 @@ export default function DashboardPage() {
   }, []);
 
   const { steps, progress } = useOnboardingSteps(kycStatus, paymentStatus);
-
   const kycMeta = KYC_STATUS_LABELS[kycStatus ?? "not_started"];
+
+  const isFreeTier = user?.role === "free";
+  const isMember = user?.role === "member" || user?.role === "admin";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -152,8 +358,8 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {user?.role === "member" && <Badge variant="success">Member</Badge>}
-          {user?.role === "free"   && <Badge variant="warning">Free Tier</Badge>}
+          {isMember && <Badge variant="success">Member</Badge>}
+          {isFreeTier && <Badge variant="warning">Free Tier</Badge>}
           <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold uppercase">
             {user?.full_name?.slice(0, 2) ?? "KB"}
           </div>
@@ -161,14 +367,14 @@ export default function DashboardPage() {
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────── */}
-      <div className="flex-1 p-4 sm:p-6 space-y-6 max-w-5xl w-full mx-auto animate-fade-in">
+      <div className="flex-1 p-4 sm:p-6 space-y-8 max-w-6xl w-full mx-auto animate-fade-in">
 
         {/* Hero welcome */}
         <div className="relative rounded-2xl overflow-hidden bg-brand-800 text-white p-6 sm:p-8">
           <div className="absolute inset-0">
             <Image
               src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=1200&q=60"
-              alt="Professional workspace"
+              alt="Kenyan professional workspace"
               fill
               className="object-cover opacity-15"
             />
@@ -179,21 +385,21 @@ export default function DashboardPage() {
               <h2 className="font-display text-2xl sm:text-3xl font-bold">
                 {user?.full_name ?? "Freelancer"} 👋
               </h2>
-              <p className="text-brand-200 mt-2 text-sm leading-relaxed max-w-md">
-                {user?.role === "member"
-                  ? "Your account is active. Explore your coaching resources and keep growing."
-                  : "Complete your onboarding to unlock full access to coaching resources."}
+              <p className="text-brand-200 mt-2 text-sm leading-relaxed max-w-lg">
+                {isMember
+                  ? "Your account is active. Explore your coaching resources, job leads, and training modules."
+                  : "Complete your onboarding below to unlock all coaching resources, job leads, and training modules."}
               </p>
             </div>
-            {user?.role === "free" && (
+            {isFreeTier && (
               <Link href="/dashboard/payment">
                 <Button variant="success" size="lg" className="shrink-0 gap-2">
                   <Zap className="h-4 w-4" />
-                  Activate Membership
+                  Activate for {formatKES(100)}
                 </Button>
               </Link>
             )}
-            {user?.role === "member" && (
+            {isMember && (
               <Link href="/dashboard/coaching">
                 <Button variant="success" size="lg" className="shrink-0 gap-2">
                   <BookOpen className="h-4 w-4" />
@@ -206,72 +412,52 @@ export default function DashboardPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={Users}     label="Community"  value="2,400+"  sub="Active members"        color="bg-brand-500" />
-          <StatCard icon={TrendingUp} label="Avg Income" value="KES 85K" sub="Monthly for members"  color="bg-growth-500" />
-          <StatCard icon={BookOpen}  label="Resources"  value="40+"     sub="Guides & templates"    color="bg-purple-500" />
-          <StatCard icon={Zap}       label="Your Plan"  value={user?.role === "member" ? "Member" : "Free"} sub={user?.role === "member" ? "Full access" : "Limited access"} color={user?.role === "member" ? "bg-growth-500" : "bg-yellow-500"} />
+          <StatCard icon={Users}        label="Community"  value="2,400+"  sub="Active members"         color="bg-brand-500" />
+          <StatCard icon={TrendingUp}   label="Avg Income" value="KES 85K" sub="Monthly for members"    color="bg-growth-500" />
+          <StatCard icon={GraduationCap} label="Modules"   value="6"       sub="Training & resources"   color="bg-purple-500" />
+          <StatCard
+            icon={Zap}
+            label="Your Plan"
+            value={isMember ? "Member" : "Free"}
+            sub={isMember ? "Full access" : "Limited access"}
+            color={isMember ? "bg-growth-500" : "bg-yellow-500"}
+          />
         </div>
 
-        {/* Main grid - Gated Content System */}
+        {/* ── Gated Service Grid ──────────────────────────────────────── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display text-lg font-bold">Service Modules</h3>
-              <p className="text-sm text-muted-foreground">Access training, resources, and job leads.</p>
+              <p className="text-sm text-muted-foreground">
+                {isFreeTier
+                  ? "Pay the one-time KES 100 fee to unlock all modules below."
+                  : "Full access active — explore your training, resources, and opportunities."}
+              </p>
             </div>
+            {isFreeTier && (
+              <Link href="/dashboard/payment">
+                <Button size="sm" variant="outline" className="gap-1.5 shrink-0">
+                  <Lock className="h-3.5 w-3.5" />
+                  Unlock All
+                </Button>
+              </Link>
+            )}
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              { id: "lidar", title: "LiDAR Training", description: "Master 3D spatial data annotation.", icon: BookOpen, href: "/dashboard/training" },
-              { id: "jobs", title: "Job Leads", description: "Vetted freelance opportunities for Kenyans.", icon: Zap, href: "/dashboard/jobs" },
-              { id: "portfolio", title: "Portfolio Review", description: "Get your Upwork profile reviewed by experts.", icon: TrendingUp, href: "/dashboard/coaching" },
-            ].map((service) => {
-              const isLocked = user?.role === "free";
-              const targetHref = isLocked ? "/dashboard/payment" : service.href;
-              
-              return (
-                <Link key={service.id} href={targetHref} className="group block h-full">
-                  <Card className={cn("h-full transition-all duration-200 hover:shadow-md", isLocked ? "bg-muted/30 border-dashed" : "hover:border-brand-300")}>
-                    <CardContent className="p-5 flex flex-col h-full">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={cn("p-2.5 rounded-xl", isLocked ? "bg-muted" : "bg-brand-100 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors")}>
-                          <service.icon className="h-5 w-5" />
-                        </div>
-                        {isLocked ? (
-                          <Badge variant="secondary" className="gap-1 bg-background">
-                            <Lock className="h-3 w-3" />
-                            Locked
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-brand-600 border-brand-200">
-                            Available
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      <h4 className="font-semibold mb-1">{service.title}</h4>
-                      <p className="text-sm text-muted-foreground flex-1 mb-4">{service.description}</p>
-                      
-                      {isLocked ? (
-                        <div className="text-xs font-semibold text-brand-600 flex items-center gap-1 group-hover:underline">
-                          Upgrade to Access <ArrowRight className="h-3 w-3" />
-                        </div>
-                      ) : (
-                        <div className="text-xs font-semibold text-growth-600 flex items-center gap-1 group-hover:underline">
-                          Enter Module <ArrowRight className="h-3 w-3" />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {SERVICE_MODULES.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                isLocked={isFreeTier}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Onboarding grid */}
-        <div className="grid lg:grid-cols-5 gap-6 mt-6">
+        {/* ── Onboarding + Sidebar grid ───────────────────────────────── */}
+        <div className="grid lg:grid-cols-5 gap-6">
           {/* Onboarding checklist — 3 cols */}
           <Card className="lg:col-span-3">
             <CardHeader className="pb-3">
@@ -367,7 +553,7 @@ export default function DashboardPage() {
                   <span className="text-sm text-muted-foreground">Amount</span>
                   <span className="font-semibold text-sm">{formatKES(100)}</span>
                 </div>
-                {user?.role !== "member" ? (
+                {!isMember ? (
                   <Link href="/dashboard/payment">
                     <Button size="sm" className="w-full gap-2">
                       <CreditCard className="h-3.5 w-3.5" />
@@ -382,19 +568,25 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Resource teaser */}
-            <Card className="bg-brand-50 border-brand-100">
+            {/* Lifetime value highlight */}
+            <Card className="bg-gradient-to-br from-brand-50 to-growth-50 border-brand-100">
               <CardContent className="p-4">
-                <p className="text-sm font-semibold text-brand-800 mb-1">
-                  Latest Resource
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-brand-600" />
+                  <p className="text-sm font-semibold text-brand-800">Lifetime Access</p>
+                </div>
                 <p className="text-xs text-brand-600 leading-snug mb-3">
-                  "Building a Winning Upwork Profile for Kenyan Freelancers"
+                  One payment of {formatKES(100)} unlocks all 6 service modules,
+                  40+ resources, templates, and community access — forever.
                 </p>
-                <Link href="/dashboard/coaching">
-                  <Button variant="outline" size="sm" className="w-full text-brand-600 border-brand-200 hover:bg-brand-100 gap-2">
+                <Link href={isFreeTier ? "/dashboard/payment" : "/dashboard/coaching"}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-brand-600 border-brand-200 hover:bg-brand-100 gap-2"
+                  >
                     <BookOpen className="h-3.5 w-3.5" />
-                    {user?.role === "member" ? "Read Now" : "Unlock Access"}
+                    {isMember ? "Browse Resources" : "Unlock Access"}
                   </Button>
                 </Link>
               </CardContent>
