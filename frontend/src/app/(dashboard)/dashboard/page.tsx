@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Users,
   Zap,
+  Lock,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -211,9 +212,66 @@ export default function DashboardPage() {
           <StatCard icon={Zap}       label="Your Plan"  value={user?.role === "member" ? "Member" : "Free"} sub={user?.role === "member" ? "Full access" : "Limited access"} color={user?.role === "member" ? "bg-growth-500" : "bg-yellow-500"} />
         </div>
 
-        {/* Main grid */}
-        <div className="grid lg:grid-cols-5 gap-6">
+        {/* Main grid - Gated Content System */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-lg font-bold">Service Modules</h3>
+              <p className="text-sm text-muted-foreground">Access training, resources, and job leads.</p>
+            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { id: "lidar", title: "LiDAR Training", description: "Master 3D spatial data annotation.", icon: BookOpen, href: "/dashboard/training" },
+              { id: "jobs", title: "Job Leads", description: "Vetted freelance opportunities for Kenyans.", icon: Zap, href: "/dashboard/jobs" },
+              { id: "portfolio", title: "Portfolio Review", description: "Get your Upwork profile reviewed by experts.", icon: TrendingUp, href: "/dashboard/coaching" },
+            ].map((service) => {
+              const isLocked = user?.role === "free";
+              const targetHref = isLocked ? "/dashboard/payment" : service.href;
+              
+              return (
+                <Link key={service.id} href={targetHref} className="group block h-full">
+                  <Card className={cn("h-full transition-all duration-200 hover:shadow-md", isLocked ? "bg-muted/30 border-dashed" : "hover:border-brand-300")}>
+                    <CardContent className="p-5 flex flex-col h-full">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={cn("p-2.5 rounded-xl", isLocked ? "bg-muted" : "bg-brand-100 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors")}>
+                          <service.icon className="h-5 w-5" />
+                        </div>
+                        {isLocked ? (
+                          <Badge variant="secondary" className="gap-1 bg-background">
+                            <Lock className="h-3 w-3" />
+                            Locked
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-brand-600 border-brand-200">
+                            Available
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <h4 className="font-semibold mb-1">{service.title}</h4>
+                      <p className="text-sm text-muted-foreground flex-1 mb-4">{service.description}</p>
+                      
+                      {isLocked ? (
+                        <div className="text-xs font-semibold text-brand-600 flex items-center gap-1 group-hover:underline">
+                          Upgrade to Access <ArrowRight className="h-3 w-3" />
+                        </div>
+                      ) : (
+                        <div className="text-xs font-semibold text-growth-600 flex items-center gap-1 group-hover:underline">
+                          Enter Module <ArrowRight className="h-3 w-3" />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
 
+        {/* Onboarding grid */}
+        <div className="grid lg:grid-cols-5 gap-6 mt-6">
           {/* Onboarding checklist — 3 cols */}
           <Card className="lg:col-span-3">
             <CardHeader className="pb-3">
