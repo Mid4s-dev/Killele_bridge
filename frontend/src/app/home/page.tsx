@@ -92,7 +92,7 @@ const TESTIMONIALS = [
 
 const STEPS = [
   { step: "01", title: "Create your account", desc: "Register in under two minutes." },
-  { step: "02", title: "Pay the one-time fee", desc: "KES 100 via secure IntaSend checkout." },
+  { step: "02", title: "Pay the one-time fee", desc: `KES ${Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} via secure IntaSend checkout.` },
   { step: "03", title: "Verify your identity", desc: "Quick KYC with your National ID." },
   { step: "04", title: "Access everything", desc: "Unlock all resources immediately." },
 ];
@@ -107,7 +107,7 @@ export default function HomePage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Link href="/home" className="flex items-center gap-2 shrink-0">
-            <Image src="/logo.png" alt="Kilele Bridge" width={130} height={36} priority />
+            <Image src="/logo.png" alt="Kilele Bridge" width={130} height={36} priority className="object-contain" />
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login">
@@ -152,7 +152,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/register">
               <Button size="lg" variant="success" className="gap-2 text-base px-8">
-                Start for KES 100 <ArrowRight className="h-4 w-4" />
+                Start for KES {Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
             <Link href="#how-it-works">
@@ -199,14 +199,14 @@ export default function HomePage() {
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="group flex flex-col gap-4 p-6 rounded-2xl border bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="group flex flex-col gap-4 p-6 rounded-2xl border bg-card hover:bg-brand-900 hover:text-white hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
               >
                 <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${f.color}`}>
                   <f.icon className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-base mb-1.5">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
+                  <h3 className="font-semibold text-base mb-1.5 group-hover:text-white">{f.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed group-hover:text-brand-100">{f.description}</p>
                 </div>
               </div>
             ))}
@@ -293,7 +293,7 @@ export default function HomePage() {
             Ready to reach your summit?
           </h2>
           <p className="text-brand-200 text-lg mb-8 leading-relaxed">
-            Join 2,400+ Kenyan freelancers. One-time fee of KES 100. Full access,
+            Join 2,400+ Kenyan freelancers. One-time fee of KES {Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)}. Full access,
             forever.
           </p>
           <Link href="/register">
@@ -311,7 +311,7 @@ export default function HomePage() {
       <footer className="border-t bg-background py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <Image src="/logo.png" alt="Kilele Bridge" width={110} height={32} />
+            <Image src="/logo.png" alt="Kilele Bridge" width={110} height={32} className="object-contain" />
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <Link href="/terms"   className="hover:text-foreground transition-colors">Terms</Link>
               <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

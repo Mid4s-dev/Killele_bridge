@@ -10,6 +10,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+ARG NEXT_PUBLIC_REGISTRATION_FEE_KES=100
+ENV NEXT_PUBLIC_REGISTRATION_FEE_KES=$NEXT_PUBLIC_REGISTRATION_FEE_KES
+
 # Install deps first (layer-cached unless package-lock changes)
 COPY frontend/package*.json ./
 RUN npm ci --no-audit --no-fund

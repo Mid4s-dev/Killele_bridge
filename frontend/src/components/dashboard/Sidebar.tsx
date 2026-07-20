@@ -87,7 +87,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               alt="Kilele Bridge"
               width={110}
               height={32}
-              className="brightness-0 invert"
+              className="brightness-0 invert object-contain"
             />
           </Link>
           <button
@@ -190,14 +190,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="mx-3 mb-3 p-3.5 rounded-xl bg-gradient-to-br from-brand-600 to-brand-700 border border-brand-500">
             <p className="text-xs font-semibold text-white mb-1">Unlock Full Access</p>
             <p className="text-[11px] text-brand-200 leading-snug mb-2.5">
-              Complete your KES 100 registration to access all coaching resources.
+              Complete your KES ${Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} registration to access all coaching resources.
             </p>
             <Link
               href="/dashboard/payment"
               onClick={onClose}
               className="block text-center text-xs font-semibold bg-growth-500 hover:bg-growth-600 text-white py-1.5 px-3 rounded-lg transition-colors"
             >
-              Pay Now — KES 100
+              Pay Now — KES ${Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)}
             </Link>
           </div>
         )}

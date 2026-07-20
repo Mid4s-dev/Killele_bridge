@@ -29,7 +29,7 @@ export const tokenStore = {
   set: (token: string) =>
     Cookies.set(TOKEN_KEY, token, {
       expires: 1 / 24,        // 1 hour — matches JWT lifetime
-      secure: process.env.NODE_ENV === "production",
+      secure: typeof window !== "undefined" ? window.location.protocol === "https:" : false,
       sameSite: "strict",
     }),
   remove: () => Cookies.remove(TOKEN_KEY),
