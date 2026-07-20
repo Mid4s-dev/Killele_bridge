@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Payment page — KES Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100) registration fee via IntaSend.
+ * Payment page — KES 100 registration fee via IntaSend.
  *
  * Flow:
  *   1. Page loads → checks if user is already a member (skip payment).
@@ -63,7 +63,7 @@ function AlreadyMemberState() {
   return (
     <div className="text-center space-y-5 py-8 animate-fade-in">
       <div className="flex justify-center">
-        <div className="w-16 h-16 rounded-full bg-growth-Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100) flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-growth-100 flex items-center justify-center">
           <BadgeCheck className="h-9 w-9 text-growth-500" />
         </div>
       </div>
@@ -88,14 +88,14 @@ function PaymentSuccessState({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="text-center space-y-5 py-6 animate-fade-in">
       <div className="flex justify-center">
-        <div className="w-16 h-16 rounded-full bg-growth-Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100) flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full bg-growth-100 flex items-center justify-center">
           <CheckCircle2 className="h-9 w-9 text-growth-500" />
         </div>
       </div>
       <div>
         <h3 className="font-display text-xl font-bold">Payment Confirmed!</h3>
         <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
-          Your KES Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100) registration fee has been received. Your account has been
+          Your KES {Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} registration fee has been received. Your account has been
           upgraded to <strong>Member</strong> status.
         </p>
       </div>
@@ -149,10 +149,10 @@ function PaymentFailedState({
 
 /** Animated polling indicator shown after the user returns from IntaSend */
 function PollingState({ elapsed, timeout }: { elapsed: number; timeout: number }) {
-  const progress = Math.min((elapsed / timeout) * Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100), Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100));
+  const progress = Math.min((elapsed / timeout) * 100, 100);
   return (
     <div className="space-y-5 py-4 animate-fade-in">
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-brand-50 border border-brand-Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)">
+      <div className="flex items-center gap-3 p-4 rounded-xl bg-brand-50 border border-brand-100">
         <Loader2 className="h-5 w-5 text-brand-500 animate-spin shrink-0" />
         <div>
           <p className="text-sm font-semibold text-brand-800">
@@ -166,7 +166,7 @@ function PollingState({ elapsed, timeout }: { elapsed: number; timeout: number }
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>Checking payment status</span>
-          <span>{Math.round(elapsed / Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)0)}s</span>
+          <span>{Math.round(elapsed / 1000)}s</span>
         </div>
         <Progress value={progress} className="h-1.5" />
       </div>
@@ -313,7 +313,7 @@ export default function PaymentPage() {
                 Activate Your Membership
               </CardTitle>
               <CardDescription>
-                Pay the one-time KES Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100) registration fee to unlock full access
+                Pay the one-time KES {Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} registration fee to unlock full access
                 to all coaching resources and community features.
               </CardDescription>
             </CardHeader>
@@ -436,7 +436,7 @@ export default function PaymentPage() {
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
               { icon: ShieldCheck, label: "Secure Checkout", sub: "Powered by IntaSend" },
-              { icon: CheckCircle2, label: "No Hidden Fees",  sub: "Exactly KES Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)" },
+              { icon: CheckCircle2, label: "No Hidden Fees",  sub: `Exactly KES ${Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)}` },
               { icon: Zap,         label: "Instant Access",  sub: "On confirmation" },
             ].map(({ icon: Icon, label, sub }) => (
               <div

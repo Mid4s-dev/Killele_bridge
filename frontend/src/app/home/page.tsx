@@ -159,7 +159,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="gap-2 text-base border-brand-500 text-white hover:bg-brand-800"
+                className="gap-2 text-base border-brand-500 text-black hover:bg-brand-800"
               >
                 How it works
               </Button>
