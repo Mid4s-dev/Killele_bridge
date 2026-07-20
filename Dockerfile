@@ -62,11 +62,4 @@ USER kilele
 # Heroku sets $PORT dynamically. Gunicorn manages the uvicorn worker process.
 # Single dyno → 1 worker (-w 1). WEB_CONCURRENCY can override via config var.
 EXPOSE 8000
-CMD gunicorn app.main:app \
-      --worker-class uvicorn.workers.UvicornWorker \
-      --workers "${WEB_CONCURRENCY:-1}" \
-      --bind "0.0.0.0:${PORT:-8000}" \
-      --timeout 120 \
-      --keep-alive 5 \
-      --log-level info \
-      --access-logfile -
+CMD ["sh", "-c", "gunicorn app.main:app --worker-class uvicorn.workers.UvicornWorker --workers \"${WEB_CONCURRENCY:-1}\" --bind \"0.0.0.0:${PORT:-8000}\" --timeout 120 --keep-alive 5 --log-level info --access-logfile -"]
