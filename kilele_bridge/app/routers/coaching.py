@@ -72,6 +72,24 @@ def list_resources(
                     "optimisation, and local business targeting."
                 ),
             },
+            {
+                "id": 5,
+                "title": "Introduction to Next.js for Freelancers",
+                "category": "development",
+                "description": "Learn the basics of Next.js and React to build modern web applications for your clients quickly.",
+            },
+            {
+                "id": 6,
+                "title": "Advanced API Integration in Python",
+                "category": "development",
+                "description": "Master building and consuming REST APIs in Python using FastAPI, including secure authentication and deployment.",
+            },
+            {
+                "id": 7,
+                "title": "Mastering LiDAR Data Processing",
+                "category": "lidar",
+                "description": "Comprehensive course on handling and processing LiDAR data for GIS professionals and mapping projects.",
+            },
         ]
     }
 
