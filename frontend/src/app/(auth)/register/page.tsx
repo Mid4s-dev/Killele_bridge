@@ -25,6 +25,7 @@ const registerSchema = z
       .min(2, "Full name must be at least 2 characters.")
       .max(120),
     email: z.string().email("Enter a valid email address."),
+    phone_number: z.string().regex(/^2547\d{8}$|^2541\d{8}$|^07\d{8}$|^01\d{8}$/, "Enter a valid Kenyan phone number (e.g. 2547XXXXXXXX or 07XXXXXXXX)."),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters.")
@@ -82,6 +83,7 @@ export default function RegisterPage() {
       await authApi.register({
         full_name: values.full_name,
         email: values.email,
+        phone_number: values.phone_number,
         password: values.password,
       });
       setSuccess(true);
@@ -157,6 +159,22 @@ export default function RegisterPage() {
           />
           {errors.email && (
             <p role="alert" className="text-xs text-destructive">{errors.email.message}</p>
+          )}
+        </div>
+
+        {/* Phone number */}
+        <div className="space-y-1.5">
+          <Label htmlFor="phone_number">Phone number</Label>
+          <Input
+            id="phone_number"
+            type="tel"
+            autoComplete="tel"
+            placeholder="e.g. 254712345678"
+            aria-invalid={!!errors.phone_number}
+            {...register("phone_number")}
+          />
+          {errors.phone_number && (
+            <p role="alert" className="text-xs text-destructive">{errors.phone_number.message}</p>
           )}
         </div>
 

@@ -70,9 +70,9 @@ def _verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
 # Public service functions
 # ---------------------------------------------------------------------------
 
-def initiate_registration_payment(user: User, db: Session) -> CheckoutResponse:
+def initiate_registration_payment(user: User, phone_number: str, db: Session) -> CheckoutResponse:
     """
-    Create an IntaSend checkout for the 100 KES registration fee.
+    Create an IntaSend STK Push for the registration fee.
 
     Steps:
     1. Guard against double-payment (idempotency).
@@ -118,16 +118,14 @@ def initiate_registration_payment(user: User, db: Session) -> CheckoutResponse:
     # 2. Call IntaSend checkout API
     try:
         client = _get_intasend_client()
-        response = client.collect.checkout(
+        response = client.collect.mpesa_stk_push(
+            phone_number=phone_number,
             email=user.email,
             amount=settings.registration_fee_kes,
-            currency="KES",
-            redirect_url=settings.payment_redirect_url,
-            host=settings.payment_redirect_url,
             narrative=f"Kilele Bridge registration fee - User {user.id}",
         )
-        # IntaSend checkout link flow returns an id and url
-        invoice_id: str = response.get("id", "")
+        # IntaSend STK push returns an invoice object
+        invoice_id: str = response.get("invoice", {}).get("invoice_id", "")
         checkout_url: str = response.get("url", settings.payment_redirect_url)
     except Exception as exc:
         logger.error("IntaSend checkout initiation failed for user %s: %s", user.id, exc)

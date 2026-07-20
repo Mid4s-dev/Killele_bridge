@@ -16,7 +16,7 @@ from app.core.dependencies import get_current_user
 from app.database import get_db
 from app.models.payment import Payment
 from app.models.user import User
-from app.schemas.payment import CheckoutResponse, PaymentStatusResponse
+from app.schemas.payment import CheckoutResponse, PaymentStatusResponse, PaymentInitiateRequest
 from app.services.payment_service import initiate_registration_payment, process_webhook
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
     summary="Initiate the 100 KES registration payment",
 )
 def initiate_payment(
+    payload: PaymentInitiateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ) -> CheckoutResponse:
@@ -39,7 +40,7 @@ def initiate_payment(
     The user should be redirected to `checkout_url` to complete payment.
     After payment, IntaSend will POST to `/payments/webhook`.
     """
-    return initiate_registration_payment(current_user, db)
+    return initiate_registration_payment(current_user, payload.phone_number, db)
 
 
 @router.post(

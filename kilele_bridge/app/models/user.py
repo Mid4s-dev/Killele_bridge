@@ -35,6 +35,7 @@ class User(Base):
     # Identity — store minimal PII
     full_name = Column(String(120), nullable=False)
     email = Column(String(254), nullable=False, index=True)
+    phone_number = Column(String(20), nullable=True)
 
     # Security — bcrypt hash only; plaintext password is NEVER stored
     hashed_password = Column(String(72), nullable=False)

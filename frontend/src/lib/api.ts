@@ -81,6 +81,7 @@ export const authApi = {
   register: async (payload: {
     full_name: string;
     email: string;
+    phone_number: string;
     password: string;
   }): Promise<User> => {
     const { data } = await http.post<User>("/auth/register", payload);
@@ -106,8 +107,8 @@ export const authApi = {
 // ---------------------------------------------------------------------------
 
 export const paymentApi = {
-  initiate: async (): Promise<CheckoutResponse> => {
-    const { data } = await http.post<CheckoutResponse>("/payments/initiate");
+  initiate: async (payload: { phone_number: string }): Promise<CheckoutResponse> => {
+    const { data } = await http.post<CheckoutResponse>("/payments/initiate", payload);
     return data;
   },
 

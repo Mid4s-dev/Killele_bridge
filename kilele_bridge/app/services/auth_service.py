@@ -36,6 +36,7 @@ def register_user(payload: RegisterRequest, db: Session) -> UserResponse:
     user = User(
         full_name=payload.full_name.strip(),
         email=normalised_email,
+        phone_number=payload.phone_number.strip(),
         hashed_password=hash_password(payload.password),
         role=UserRole.FREE,
     )

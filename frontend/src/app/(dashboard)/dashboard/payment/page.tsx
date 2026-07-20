@@ -47,6 +47,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { PaymentStatus } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -184,6 +186,13 @@ export default function PaymentPage() {
   const [isInitiating, setIsInitiating] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const [pollElapsed, setPollElapsed] = useState(0);
+  const [phoneNumber, setPhoneNumber] = useState("");
+
+  useEffect(() => {
+    if (user?.phone_number && !phoneNumber) {
+      setPhoneNumber(user.phone_number);
+    }
+  }, [user]);
 
   const pollTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
@@ -235,22 +244,22 @@ export default function PaymentPage() {
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
-  // Initiate payment
   async function handleInitiate() {
+    if (!phoneNumber) {
+      toast({ variant: "destructive", title: "Phone number required", description: "Please enter your M-PESA phone number." });
+      return;
+    }
     setIsInitiating(true);
     try {
-      const checkout = await paymentApi.initiate();
+      const checkout = await paymentApi.initiate({ phone_number: phoneNumber });
       setPaymentId(checkout.payment_id);
       setPaymentStatus("pending");
 
-      // Open IntaSend checkout in a new tab
-      window.open(checkout.checkout_url, "_blank", "noopener,noreferrer");
-
-      // Begin polling
+      // Begin polling immediately
       startPolling(checkout.payment_id);
       toast({
-        title: "Checkout opened",
-        description: "Complete the payment in the new tab, then return here.",
+        title: "Check your phone",
+        description: "An M-PESA prompt has been sent to your phone. Enter your PIN to complete payment.",
       });
     } catch (err: unknown) {
       toast({
@@ -389,21 +398,37 @@ export default function PaymentPage() {
                     </div>
                   )}
 
+                  {/* Phone number input */}
+                  {!isPolling && (
+                    <div className="space-y-1.5 pt-2">
+                      <Label htmlFor="phone">M-PESA Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="e.g. 254712345678"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        We will send an STK push prompt to this number.
+                      </p>
+                    </div>
+                  )}
+
                   {/* CTA */}
                   {!isPolling && (
                     <Button
                       size="lg"
                       className="w-full gap-2"
                       onClick={handleInitiate}
-                      disabled={isInitiating}
+                      disabled={isInitiating || !phoneNumber}
                     >
                       {isInitiating ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" /> Opening checkout…</>
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Sending prompt…</>
                       ) : (
                         <>
-                          <ExternalLink className="h-4 w-4" />
-                          Pay {formatKES(Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100))} via IntaSend
-                          <ArrowRight className="h-4 w-4 ml-auto" />
+                          <Zap className="h-4 w-4" />
+                          Pay {formatKES(Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100))} via M-PESA
                         </>
                       )}
                     </Button>

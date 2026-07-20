@@ -14,6 +14,7 @@ class RegisterRequest(BaseModel):
         examples=["Jane Mwangi"],
     )
     email: EmailStr = Field(..., examples=["jane@example.co.ke"])
+    phone_number: str = Field(..., examples=["2547XXXXXXXX"])
     password: str = Field(
         ...,
         min_length=8,
@@ -55,6 +56,7 @@ class UserResponse(BaseModel):
     id: int
     full_name: str
     email: EmailStr
+    phone_number: str | None = None
     role: str
     is_active: bool
 
