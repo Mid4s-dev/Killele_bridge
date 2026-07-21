@@ -53,11 +53,25 @@ def get_current_user(
 def require_member(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
-    """Gate access to paid-member-only endpoints."""
-    if current_user.role not in (UserRole.MEMBER, UserRole.ADMIN):
+    """Gate access to paid-member-only endpoints.
+    Vendors are also granted member-level read access to the marketplace.
+    """
+    if current_user.role not in (UserRole.MEMBER, UserRole.VENDOR, UserRole.ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="A paid membership is required to access this resource.",
+        )
+    return current_user
+
+
+def require_vendor(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Gate access to vendor-only endpoints (create/manage listings)."""
+    if current_user.role not in (UserRole.VENDOR, UserRole.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="A vendor account is required to access this resource.",
         )
     return current_user
 

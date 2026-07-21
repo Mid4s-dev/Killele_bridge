@@ -11,7 +11,12 @@ from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserR
 
 def register_user(payload: RegisterRequest, db: Session) -> UserResponse:
     """
-    Create a new FREE-tier user account.
+    Create a new user account.
+
+    - role_requested="member"  → creates a FREE-tier account (must pay KES 500
+      to be upgraded to MEMBER via the payment webhook).
+    - role_requested="vendor"  → creates a VENDOR account directly (vendors
+      are not subject to the membership fee; they pay per listing in future).
 
     Security notes:
     - Emails are normalised to lowercase before storage and lookup.
@@ -19,6 +24,8 @@ def register_user(payload: RegisterRequest, db: Session) -> UserResponse:
       (no raw SQL string interpolation — SQL injection is not possible here).
     - The password is hashed with bcrypt before the object is ever written to
       the session; plaintext never touches the database.
+    - "admin" role is NEVER accepted from registration — admins are seeded via
+      the db_init script only.
     """
     normalised_email = payload.email.lower().strip()
 
@@ -33,12 +40,19 @@ def register_user(payload: RegisterRequest, db: Session) -> UserResponse:
             detail="An account with this email already exists.",
         )
 
+    # Map role_requested to the correct UserRole enum value.
+    # Vendors get the VENDOR role immediately; everyone else starts FREE
+    # and upgrades to MEMBER after payment.
+    initial_role = (
+        UserRole.VENDOR if payload.role_requested == "vendor" else UserRole.FREE
+    )
+
     user = User(
         full_name=payload.full_name.strip(),
         email=normalised_email,
         phone_number=payload.phone_number.strip(),
         hashed_password=hash_password(payload.password),
-        role=UserRole.FREE,
+        role=initial_role,
     )
     db.add(user)
     db.commit()

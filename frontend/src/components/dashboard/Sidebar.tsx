@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Lock,
   LogOut,
+  Package,
   RefreshCw,
   ShieldCheck,
   Users,
@@ -39,6 +40,7 @@ interface NavItem {
 const ACCOUNT_NAV: NavItem[] = [
   { label: "Dashboard",      href: "/dashboard",          icon: LayoutDashboard },
   { label: "Admin",          href: "/admin",              icon: ShieldCheck, requiredRole: "admin" },
+  { label: "Vendor",         href: "/dashboard/vendor",   icon: Package, requiredRole: "vendor" },
   { label: "Payment",        href: "/dashboard/payment",  icon: CreditCard },
   { label: "Verification",   href: "/dashboard/kyc",      icon: FileCheck },
 ];
@@ -52,7 +54,7 @@ const MODULE_NAV: NavItem[] = [
   },
   {
     label: "AI Training Academy",
-    href: "/dashboard/coaching",
+    href: "/dashboard/academy",
     icon: Brain,
     requiredRole: "member",
     badge: "New",
@@ -65,7 +67,7 @@ const MODULE_NAV: NavItem[] = [
   },
   {
     label: "Account Marketplace",
-    href: "/dashboard/coaching",
+    href: "/dashboard/marketplace",
     icon: RefreshCw,
     requiredRole: "member",
   },
@@ -86,7 +88,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  const roleOrder: UserRole[] = ["free", "member", "admin"];
+  const roleOrder: UserRole[] = ["free", "member", "vendor", "admin"];
   const userLevel = user ? roleOrder.indexOf(user.role) : 0;
 
   function NavLink({ item }: { item: NavItem }) {
@@ -195,6 +197,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
           <div className="mt-2.5 flex items-center gap-2">
             {user?.role === "admin"  && <Badge variant="default"  className="text-[10px]">Admin</Badge>}
+            {user?.role === "vendor" && <Badge variant="default"  className="text-[10px] bg-gold-500">Vendor</Badge>}
             {user?.role === "member" && <Badge variant="success"  className="text-[10px]">Member</Badge>}
             {user?.role === "free"   && <Badge variant="warning"  className="text-[10px]">Free Tier</Badge>}
           </div>

@@ -26,6 +26,9 @@ const registerSchema = z
       .max(120),
     email: z.string().email("Enter a valid email address."),
     phone_number: z.string().regex(/^2547\d{8}$|^2541\d{8}$|^07\d{8}$|^01\d{8}$/, "Enter a valid Kenyan phone number (e.g. 2547XXXXXXXX or 07XXXXXXXX)."),
+    role_requested: z.enum(["member", "vendor"], {
+      errorMap: () => ({ message: "Select your account type." }),
+    }),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters.")
@@ -73,7 +76,12 @@ export default function RegisterPage() {
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      role_requested: "member",
+    },
+  });
 
   const passwordValue = watch("password", "");
   const strength = getStrength(passwordValue);
@@ -85,6 +93,7 @@ export default function RegisterPage() {
         email: values.email,
         phone_number: values.phone_number,
         password: values.password,
+        role_requested: values.role_requested,
       });
       setSuccess(true);
       toast({
@@ -175,6 +184,63 @@ export default function RegisterPage() {
           />
           {errors.phone_number && (
             <p role="alert" className="text-xs text-destructive">{errors.phone_number.message}</p>
+          )}
+        </div>
+
+        {/* Account type selector */}
+        <div className="space-y-2.5">
+          <Label>I am registering as a</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label
+              className={cn(
+                "relative flex cursor-pointer rounded-lg border-2 p-4 transition-all",
+                watch("role_requested") === "member"
+                  ? "border-brand-500 bg-brand-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              )}
+            >
+              <input
+                type="radio"
+                value="member"
+                className="sr-only"
+                {...register("role_requested")}
+              />
+              <div className="flex-1">
+                <span className="block text-sm font-semibold text-gray-900">
+                  Freelancer (Member)
+                </span>
+                <span className="mt-1 block text-xs text-gray-600">
+                  Access training, coaching, and tools to build your freelancing business.
+                </span>
+              </div>
+            </label>
+
+            <label
+              className={cn(
+                "relative flex cursor-pointer rounded-lg border-2 p-4 transition-all",
+                watch("role_requested") === "vendor"
+                  ? "border-gold-500 bg-gold-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              )}
+            >
+              <input
+                type="radio"
+                value="vendor"
+                className="sr-only"
+                {...register("role_requested")}
+              />
+              <div className="flex-1">
+                <span className="block text-sm font-semibold text-gray-900">
+                  Vendor (Seller)
+                </span>
+                <span className="mt-1 block text-xs text-gray-600">
+                  Post accounts for sale and offer tasks to the marketplace.
+                </span>
+              </div>
+            </label>
+          </div>
+          {errors.role_requested && (
+            <p role="alert" className="text-xs text-destructive">{errors.role_requested.message}</p>
           )}
         </div>
 

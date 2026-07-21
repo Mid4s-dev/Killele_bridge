@@ -2,7 +2,7 @@
 // Domain types — mirror the FastAPI response schemas
 // ---------------------------------------------------------------------------
 
-export type UserRole = "free" | "member" | "admin";
+export type UserRole = "free" | "member" | "vendor" | "admin";
 
 export interface User {
   id: number;
@@ -90,6 +90,85 @@ export interface AdminMembersResponse {
   page: number;
   page_size: number;
   total_pages: number;
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace types
+// ---------------------------------------------------------------------------
+
+export type ListingCategory = "account_sale" | "task" | "service" | "other";
+export type ListingStatus = "active" | "paused" | "closed" | "sold";
+export type ApplicationStatus = "pending" | "accepted" | "rejected" | "withdrawn";
+
+export interface Listing {
+  id: number;
+  vendor_id: number;
+  vendor_name: string;
+  title: string;
+  description: string;
+  category: ListingCategory;
+  price: string | null;
+  status: ListingStatus;
+  created_at: string;
+  updated_at: string;
+  application_count: number;
+}
+
+export interface ListingsPageResponse {
+  listings: Listing[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface Application {
+  id: number;
+  listing_id: number;
+  applicant_id: number;
+  applicant_name: string;
+  applicant_email: string;
+  message: string | null;
+  status: ApplicationStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Training Academy types
+// ---------------------------------------------------------------------------
+
+export type CourseProgressStatus = "not_started" | "in_progress" | "completed";
+
+export interface CourseProgress {
+  id: number;
+  user_id: number;
+  course_id: string;
+  status: CourseProgressStatus;
+  percent_complete: number;
+  started_at: string | null;
+  completed_at: string | null;
+  updated_at: string;
+}
+
+export interface CourseDetail {
+  course_id: string;
+  title: string;
+  description: string;
+  category: string;
+  duration_minutes: number;
+  status: CourseProgressStatus;
+  percent_complete: number;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+export interface AcademyDashboard {
+  courses: CourseDetail[];
+  total_courses: number;
+  completed_courses: number;
+  in_progress_courses: number;
+  overall_percent: number;
 }
 
 // ---------------------------------------------------------------------------

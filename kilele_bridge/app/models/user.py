@@ -16,11 +16,13 @@ from app.database import Base
 class UserRole(str, enum.Enum):
     """
     FREE    – registered but registration fee not yet confirmed.
-    MEMBER  – registration fee paid and webhook-verified.
+    MEMBER  – registration fee paid and webhook-verified (freelancer).
+    VENDOR  – account/task seller; can post marketplace listings.
     ADMIN   – platform administrator.
     """
     FREE = "free"
     MEMBER = "member"
+    VENDOR = "vendor"
     ADMIN = "admin"
 
 
@@ -79,7 +81,10 @@ class User(Base):
     )
 
     # Relationships
-    payments = relationship("Payment", back_populates="user", lazy="select")
+    payments        = relationship("Payment",        back_populates="user",      lazy="select")
+    listings        = relationship("Listing",        back_populates="vendor",    lazy="select", foreign_keys="Listing.vendor_id")
+    applications    = relationship("Application",    back_populates="applicant", lazy="select", foreign_keys="Application.applicant_id")
+    course_progress = relationship("CourseProgress", back_populates="user",      lazy="select", foreign_keys="CourseProgress.user_id")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"

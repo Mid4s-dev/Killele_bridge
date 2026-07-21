@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 import re
+from typing import Literal
 
 
 # ---------------------------------------------------------------------------
@@ -20,6 +21,14 @@ class RegisterRequest(BaseModel):
         min_length=8,
         max_length=72,   # bcrypt truncates at 72 bytes
         examples=["Str0ng!Pass"],
+    )
+    # Allows the user to sign up directly as a vendor.
+    # Accepted values: "member" (default freelancer) or "vendor".
+    # Any other value is rejected by the validator below.
+    # NOTE: "admin" can never be self-assigned — admins are seeded via script.
+    role_requested: Literal["member", "vendor"] = Field(
+        default="member",
+        description="Choose 'member' (Freelancer) or 'vendor' (Account & Task Seller).",
     )
 
     @field_validator("password")

@@ -24,7 +24,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.routers import admin, auth, coaching, config, kyc, payments
+from app.routers import academy, admin, auth, coaching, config, kyc, marketplace, payments
 
 settings = get_settings()
 
@@ -160,12 +160,14 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 # ---------------------------------------------------------------------------
 # API routers  — all mounted under /api/v1
 # ---------------------------------------------------------------------------
-app.include_router(config.router,   prefix="/api/v1")   # public, no auth
-app.include_router(auth.router,     prefix="/api/v1")
-app.include_router(payments.router, prefix="/api/v1")
-app.include_router(kyc.router,      prefix="/api/v1")
-app.include_router(coaching.router, prefix="/api/v1")
-app.include_router(admin.router,    prefix="/api/v1")   # admin-only, role-gated
+app.include_router(config.router,      prefix="/api/v1")   # public, no auth
+app.include_router(auth.router,        prefix="/api/v1")
+app.include_router(payments.router,    prefix="/api/v1")
+app.include_router(kyc.router,         prefix="/api/v1")
+app.include_router(coaching.router,    prefix="/api/v1")
+app.include_router(marketplace.router, prefix="/api/v1")   # member + vendor
+app.include_router(academy.router,     prefix="/api/v1")   # member only
+app.include_router(admin.router,       prefix="/api/v1")   # admin-only, role-gated
 
 
 # ---------------------------------------------------------------------------

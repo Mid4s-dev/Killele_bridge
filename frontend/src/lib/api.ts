@@ -10,11 +10,16 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import Cookies from "js-cookie";
 import type {
+  AcademyDashboard,
   AdminMembersResponse,
+  Application,
   AuthTokenResponse,
   CheckoutResponse,
   CoachingResource,
+  CourseProgress,
   KycStatusResponse,
+  Listing,
+  ListingsPageResponse,
   PaymentStatusResponse,
   User,
 } from "@/types";
@@ -105,6 +110,7 @@ export const authApi = {
     email: string;
     phone_number: string;
     password: string;
+    role_requested?: "member" | "vendor";
   }): Promise<User> => {
     const { data } = await http.post<User>("/auth/register", payload);
     return data;
@@ -222,6 +228,118 @@ export const adminApi = {
     const { data } = await http.get<AdminMembersResponse>("/admin/members", {
       params,
     });
+    return data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Marketplace endpoints (member + vendor)
+// ---------------------------------------------------------------------------
+export const marketplaceApi = {
+  listListings: async (params?: {
+    page?: number;
+    page_size?: number;
+    q?: string;
+    category?: string;
+  }): Promise<ListingsPageResponse> => {
+    const { data } = await http.get<ListingsPageResponse>("/marketplace/listings", {
+      params,
+    });
+    return data;
+  },
+
+  getListing: async (id: number): Promise<Listing> => {
+    const { data } = await http.get<Listing>(`/marketplace/listings/${id}`);
+    return data;
+  },
+
+  createListing: async (payload: {
+    title: string;
+    description: string;
+    category: string;
+    price?: number;
+  }): Promise<Listing> => {
+    const { data } = await http.post<Listing>("/marketplace/listings", payload);
+    return data;
+  },
+
+  updateListing: async (
+    id: number,
+    payload: {
+      title?: string;
+      description?: string;
+      category?: string;
+      price?: number;
+      status?: string;
+    }
+  ): Promise<Listing> => {
+    const { data } = await http.patch<Listing>(`/marketplace/listings/${id}`, payload);
+    return data;
+  },
+
+  deleteListing: async (id: number): Promise<void> => {
+    await http.delete(`/marketplace/listings/${id}`);
+  },
+
+  applyToListing: async (
+    id: number,
+    payload: { message?: string }
+  ): Promise<Application> => {
+    const { data } = await http.post<Application>(
+      `/marketplace/listings/${id}/apply`,
+      payload
+    );
+    return data;
+  },
+
+  getApplications: async (listingId: number): Promise<Application[]> => {
+    const { data } = await http.get<Application[]>(
+      `/marketplace/listings/${listingId}/applications`
+    );
+    return data;
+  },
+
+  updateApplicationStatus: async (
+    listingId: number,
+    applicationId: number,
+    status: string
+  ): Promise<Application> => {
+    const { data } = await http.patch<Application>(
+      `/marketplace/listings/${listingId}/applications/${applicationId}`,
+      { status }
+    );
+    return data;
+  },
+
+  withdrawApplication: async (listingId: number, applicationId: number): Promise<void> => {
+    await http.delete(`/marketplace/listings/${listingId}/applications/${applicationId}`);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Training Academy endpoints (member only)
+// ---------------------------------------------------------------------------
+export const academyApi = {
+  getDashboard: async (): Promise<AcademyDashboard> => {
+    const { data } = await http.get<AcademyDashboard>("/academy/dashboard");
+    return data;
+  },
+
+  startCourse: async (courseId: string): Promise<CourseProgress> => {
+    const { data } = await http.post<CourseProgress>(
+      `/academy/courses/${courseId}/start`
+    );
+    return data;
+  },
+
+  updateProgress: async (
+    courseId: string,
+    percentComplete: number
+  ): Promise<CourseProgress> => {
+    const { data } = await http.post<CourseProgress>(
+      `/academy/courses/${courseId}/progress`,
+      { percent_complete: percentComplete }
+    );
     return data;
   },
 };
