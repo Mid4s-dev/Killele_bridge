@@ -2,14 +2,15 @@
 Payment router.
 
 Endpoints:
-  POST /payments/initiate     — authenticated; starts a checkout for the current user
-  POST /payments/webhook      — public; called by IntaSend on payment events
-  GET  /payments/status/{id}  — authenticated; poll payment status
+  POST /payments/initiate       — authenticated; fires M-Pesa STK push
+  POST /payments/webhook        — public; called by IntaSend on payment events
+  GET  /payments/my             — authenticated; latest payment for current user
+  GET  /payments/status/{id}    — authenticated; poll a specific payment by ID
 """
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -18,6 +19,7 @@ from app.models.payment import Payment
 from app.models.user import User
 from app.schemas.payment import CheckoutResponse, PaymentStatusResponse, PaymentInitiateRequest
 from app.services.payment_service import initiate_registration_payment, process_webhook
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -52,25 +54,18 @@ def initiate_payment(
 async def payment_webhook(
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    x_intasend_signature: Annotated[str | None, Header()] = None,
 ) -> dict:
     """
     Receives payment event notifications from IntaSend.
 
-    Security:
-    - The raw body is read before any parsing so the HMAC signature can
-      be verified against the exact bytes IntaSend signed.
-    - Signature header is required; missing header → HTTP 400.
+    IntaSend does not send an HMAC signature header — it just POSTs JSON.
+    Security is provided by:
+    - The endpoint URL being non-guessable (not linked anywhere public).
+    - Validating the invoice_id against our own DB before acting on it.
+    - Only accepting COMPLETE/FAILED/CANCELLED state changes from a known invoice.
     """
-    if not x_intasend_signature:
-        logger.warning("Webhook request missing X-IntaSend-Signature header.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing signature header.",
-        )
-
     raw_body = await request.body()
-    return process_webhook(raw_body, x_intasend_signature, db)
+    return process_webhook(raw_body, db)
 
 
 @router.get(

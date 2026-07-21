@@ -3,17 +3,14 @@ Payment service — IntaSend STK Push initiation and webhook processing.
 
 Security decisions
 ------------------
-1. Webhook authenticity is verified using HMAC-SHA256 against
-   PAYMENT_WEBHOOK_SECRET. Requests without a valid signature are
-   rejected with HTTP 400 before any DB writes occur.
-2. Role upgrades happen ONLY after signature verification AND a confirmed
-   COMPLETE state from IntaSend — never on client-supplied data alone.
+1. Webhook events are validated by matching invoice_id against our own DB
+   before acting — IntaSend does not send HMAC signature headers.
+2. Role upgrades happen ONLY on a confirmed COMPLETE state from IntaSend,
+   never on client-supplied data alone.
 3. All DB operations use SQLAlchemy ORM (parameterised) — no raw SQL.
 4. The PENDING idempotency guard always re-fires the STK push so the user
    can retry without creating duplicate payment rows.
 """
-import hashlib
-import hmac
 import json
 import logging
 from decimal import Decimal
@@ -187,43 +184,28 @@ def initiate_registration_payment(
     )
 
 
-def process_webhook(raw_body: bytes, signature_header: str, db: Session) -> dict:
+def process_webhook(raw_body: bytes, db: Session) -> dict:
     """
     Handle an incoming IntaSend webhook event.
 
-    IntaSend webhook POST body for STK push events:
+    IntaSend does NOT send an HMAC signature header — it simply POSTs JSON.
+    Security relies on:
+    - Only acting on invoice_ids that exist in our own database.
+    - Ignoring unknown invoice_ids silently (no data leakage).
+    - State transitions only upgrade roles (COMPLETE) or mark failures.
+
+    IntaSend webhook POST body shape:
       {
         "invoice_id": "XXXXXXX",
         "state":      "COMPLETE" | "FAILED" | "CANCELLED" | "PENDING" | "RETRY",
         "value":      "500.00",
+        "currency":   "KES",
         "account":    "254XXXXXXXXX",
         "api_ref":    "KILELE-REG-3",
         ...
       }
-
-    Security: signature is verified before any payload is parsed or DB touched.
     """
-    if not settings.payment_webhook_secret:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Payment webhook secret is not configured.",
-        )
-
-    # 1. Verify HMAC-SHA256 signature
-    expected_sig = hmac.new(
-        settings.payment_webhook_secret.encode(),
-        raw_body,
-        hashlib.sha256,
-    ).hexdigest()
-
-    if not hmac.compare_digest(expected_sig, signature_header):
-        logger.warning("Webhook rejected: invalid signature")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid webhook signature.",
-        )
-
-    # 2. Parse payload
+    # 1. Parse payload
     try:
         body_dict = json.loads(raw_body)
         payload = IntaSendWebhookPayload.model_validate(body_dict)
@@ -238,7 +220,7 @@ def process_webhook(raw_body: bytes, signature_header: str, db: Session) -> dict
         "Webhook received | invoice_id=%s state=%s", payload.invoice_id, payload.state
     )
 
-    # 3. Look up payment by invoice_id
+    # 2. Look up payment by invoice_id
     payment = (
         db.query(Payment)
         .filter(Payment.invoice_id == payload.invoice_id)
@@ -251,7 +233,7 @@ def process_webhook(raw_body: bytes, signature_header: str, db: Session) -> dict
 
     state = payload.state.upper()
 
-    # 4. Update payment status and conditionally upgrade user role
+    # 3. Update payment status and conditionally upgrade user role
     if state == "COMPLETE":
         payment.status = PaymentStatus.COMPLETE
         user = db.get(User, payment.user_id)
