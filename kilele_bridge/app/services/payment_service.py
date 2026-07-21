@@ -32,6 +32,33 @@ settings = get_settings()
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+def _format_phone_number(phone: str) -> str:
+    """
+    Format phone number to IntaSend's expected format: 254XXXXXXXXX
+    
+    Handles:
+    - 0723335139 → 254723335139
+    - +254723335139 → 254723335139
+    - 254723335139 → 254723335139 (no change)
+    """
+    # Remove any whitespace
+    phone = phone.strip().replace(" ", "")
+    
+    # Remove leading + if present
+    if phone.startswith("+"):
+        phone = phone[1:]
+    
+    # If starts with 0, replace with 254
+    if phone.startswith("0"):
+        phone = "254" + phone[1:]
+    
+    # If doesn't start with 254, prepend it
+    if not phone.startswith("254"):
+        phone = "254" + phone
+    
+    return phone
+
+
 def _get_intasend_client() -> APIService:
     """
     Instantiate the IntaSend SDK client.
@@ -118,14 +145,19 @@ def initiate_registration_payment(user: User, phone_number: str, db: Session) ->
     # 2. Call IntaSend STK Push API
     try:
         client = _get_intasend_client()
+        # Format phone number to 254XXXXXXXXX format
+        formatted_phone = _format_phone_number(phone_number)
+        logger.info(f"Initiating STK push for user {user.id} to phone {formatted_phone}")
+        
         # IntaSend STK push returns a response with tracking_id
         response = client.collect.mpesa_stk_push(
-            phone_number=phone_number,
+            phone_number=formatted_phone,
             email=user.email,
             amount=settings.registration_fee_kes,
             narrative=f"Kilele Bridge registration fee - User {user.id}",
             api_ref=f"KILELE-REG-{payment.id}",  # Add reference for tracking
         )
+        logger.info(f"IntaSend STK push response: {response}")
         # Extract invoice/tracking ID from response
         # IntaSend returns: {"invoice": {"invoice_id": "...", ...}, "id": "...", ...}
         invoice_id: str = response.get("invoice", {}).get("invoice_id") or response.get("id", "")

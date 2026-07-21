@@ -24,13 +24,13 @@ class CheckoutResponse(BaseModel):
 
 class PaymentStatusResponse(BaseModel):
     """Current state of a payment record."""
-    payment_id: int
+    payment_id: int = Field(alias="id")
     invoice_id: str | None
     status: str
     amount: Decimal
     currency: str
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
 
 
 # ---------------------------------------------------------------------------
