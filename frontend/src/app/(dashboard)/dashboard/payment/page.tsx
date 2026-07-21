@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * Payment page — KES 100 registration fee via IntaSend.
+ * Payment page — KES registration fee via IntaSend.
  *
  * Flow:
- *   1. Page loads → checks if user is already a member (skip payment).
+ *   1. Page loads → fetches live registration fee from backend, checks if user is already a member (skip payment).
  *   2. User clicks "Pay Now" → POST /payments/initiate → receive checkout_url.
- *   3. User is redirected to IntaSend checkout in a new tab.
- *   4. After returning, page polls GET /payments/status/{id} every 4 s
+ *   3. STK push is sent to user's phone.
+ *   4. Page polls GET /payments/status/{id} every 4 s
  *      until status is "complete", "failed", or "cancelled" (max 60 s).
  *   5. On "complete" → refresh user object from /auth/me so role updates.
  *
@@ -33,7 +33,7 @@ import {
   Zap,
 } from "lucide-react";
 
-import { paymentApi } from "@/lib/api";
+import { paymentApi, configApi } from "@/lib/api";
 import { formatKES } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -86,7 +86,7 @@ function AlreadyMemberState() {
   );
 }
 
-function PaymentSuccessState({ onContinue }: { onContinue: () => void }) {
+function PaymentSuccessState({ onContinue, registrationFee }: { onContinue: () => void; registrationFee: number }) {
   return (
     <div className="text-center space-y-5 py-6 animate-fade-in">
       <div className="flex justify-center">
@@ -97,7 +97,7 @@ function PaymentSuccessState({ onContinue }: { onContinue: () => void }) {
       <div>
         <h3 className="font-display text-xl font-bold">Payment Confirmed!</h3>
         <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto leading-relaxed">
-          Your KES {Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} registration fee has been received. Your account has been
+          Your KES {registrationFee} registration fee has been received. Your account has been
           upgraded to <strong>Member</strong> status.
         </p>
       </div>
@@ -187,12 +187,30 @@ export default function PaymentPage() {
   const [isPolling, setIsPolling] = useState(false);
   const [pollElapsed, setPollElapsed] = useState(0);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [registrationFee, setRegistrationFee] = useState<number>(500); // Default fallback
+  const [isLoadingFee, setIsLoadingFee] = useState(true);
+
+  // Fetch registration fee from backend on mount
+  useEffect(() => {
+    async function fetchConfig() {
+      try {
+        const config = await configApi.get();
+        setRegistrationFee(config.registration_fee_kes);
+      } catch (error) {
+        console.error("Failed to fetch registration fee:", error);
+        // Keep default fallback value
+      } finally {
+        setIsLoadingFee(false);
+      }
+    }
+    fetchConfig();
+  }, []);
 
   useEffect(() => {
     if (user?.phone_number && !phoneNumber) {
       setPhoneNumber(user.phone_number);
     }
-  }, [user]);
+  }, [user, phoneNumber]);
 
   const pollTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
   const elapsedRef = useRef(0);
@@ -322,7 +340,7 @@ export default function PaymentPage() {
                 Activate Your Membership
               </CardTitle>
               <CardDescription>
-                Pay the one-time KES {Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)} registration fee to unlock full access
+                Pay the one-time KES {registrationFee} registration fee to unlock full access
                 to all coaching resources and community features.
               </CardDescription>
             </CardHeader>
@@ -331,7 +349,7 @@ export default function PaymentPage() {
               {/* Resolved states */}
               {isMember && <AlreadyMemberState />}
               {!isMember && paymentStatus === "complete" && (
-                <PaymentSuccessState onContinue={handleContinue} />
+                <PaymentSuccessState onContinue={handleContinue} registrationFee={registrationFee} />
               )}
               {!isMember && (paymentStatus === "failed" || paymentStatus === "cancelled") && (
                 <PaymentFailedState onRetry={handleRetry} isRetrying={isInitiating} />
@@ -357,7 +375,7 @@ export default function PaymentPage() {
                       <div className="divide-y">
                         <div className="flex items-center justify-between px-4 py-3 text-sm">
                           <span className="text-muted-foreground">Kilele Bridge Membership</span>
-                          <span className="font-semibold">{formatKES(Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100))}</span>
+                          <span className="font-semibold">{formatKES(registrationFee)}</span>
                         </div>
                         <div className="flex items-center justify-between px-4 py-3 text-sm">
                           <span className="text-muted-foreground">Processing fee</span>
@@ -366,7 +384,7 @@ export default function PaymentPage() {
                         <div className="flex items-center justify-between px-4 py-3 bg-brand-50">
                           <span className="font-bold text-brand-800">Total</span>
                           <span className="font-display text-lg font-bold text-brand-700">
-                            {formatKES(Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100))}
+                            {formatKES(registrationFee)}
                           </span>
                         </div>
                       </div>
@@ -421,14 +439,14 @@ export default function PaymentPage() {
                       size="lg"
                       className="w-full gap-2"
                       onClick={handleInitiate}
-                      disabled={isInitiating || !phoneNumber}
+                      disabled={isInitiating || !phoneNumber || isLoadingFee}
                     >
                       {isInitiating ? (
                         <><Loader2 className="h-4 w-4 animate-spin" /> Sending prompt…</>
                       ) : (
                         <>
                           <Zap className="h-4 w-4" />
-                          Pay {formatKES(Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100))} via M-PESA
+                          Pay {formatKES(registrationFee)} via M-PESA
                         </>
                       )}
                     </Button>
@@ -461,7 +479,7 @@ export default function PaymentPage() {
           <div className="grid grid-cols-3 gap-3 text-center">
             {[
               { icon: ShieldCheck, label: "Secure Checkout", sub: "Powered by IntaSend" },
-              { icon: CheckCircle2, label: "No Hidden Fees",  sub: `Exactly KES ${Number(process.env.NEXT_PUBLIC_REGISTRATION_FEE_KES || 100)}` },
+              { icon: CheckCircle2, label: "No Hidden Fees",  sub: `Exactly KES ${registrationFee}` },
               { icon: Zap,         label: "Instant Access",  sub: "On confirmation" },
             ].map(({ icon: Icon, label, sub }) => (
               <div

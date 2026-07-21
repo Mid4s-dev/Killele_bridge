@@ -115,18 +115,22 @@ def initiate_registration_payment(user: User, phone_number: str, db: Session) ->
     db.commit()
     db.refresh(payment)
 
-    # 2. Call IntaSend checkout API
+    # 2. Call IntaSend STK Push API
     try:
         client = _get_intasend_client()
+        # IntaSend STK push returns a response with tracking_id
         response = client.collect.mpesa_stk_push(
             phone_number=phone_number,
             email=user.email,
             amount=settings.registration_fee_kes,
             narrative=f"Kilele Bridge registration fee - User {user.id}",
+            api_ref=f"KILELE-REG-{payment.id}",  # Add reference for tracking
         )
-        # IntaSend STK push returns an invoice object
-        invoice_id: str = response.get("invoice", {}).get("invoice_id", "")
-        checkout_url: str = response.get("url", settings.payment_redirect_url)
+        # Extract invoice/tracking ID from response
+        # IntaSend returns: {"invoice": {"invoice_id": "...", ...}, "id": "...", ...}
+        invoice_id: str = response.get("invoice", {}).get("invoice_id") or response.get("id", "")
+        # For STK push, there's no checkout URL - payment happens on user's phone
+        checkout_url: str = settings.payment_redirect_url
     except Exception as exc:
         logger.error("IntaSend checkout initiation failed for user %s: %s", user.id, exc)
         # Mark payment as failed so the user can retry cleanly

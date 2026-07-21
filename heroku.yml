@@ -6,12 +6,9 @@ build:
     # NEXT_PUBLIC_API_URL: /api/v1 means all fetch() calls resolve to the
     # same Heroku dyno — no absolute URL, no CORS issues.
     #
-    # NEXT_PUBLIC_REGISTRATION_FEE_KES is the *build-time fallback* only.
-    # The frontend fetches the live value from GET /api/v1/config on every
-    # page load, so changing REGISTRATION_FEE_KES on the server takes
-    # effect immediately without a rebuild.
+    # Note: The frontend fetches the live registration fee from GET /api/v1/config
+    # on page load, so the fee displayed is always current.
     NEXT_PUBLIC_API_URL: /api/v1
-    NEXT_PUBLIC_REGISTRATION_FEE_KES: "100"
 
 release:
   # Runs inside the web image before the dyno starts.
