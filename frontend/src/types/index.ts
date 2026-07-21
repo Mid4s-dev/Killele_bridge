@@ -66,6 +66,33 @@ export interface CoachingResource {
 }
 
 // ---------------------------------------------------------------------------
+// Admin types
+// ---------------------------------------------------------------------------
+
+export interface AdminUserRow {
+  id: number;
+  full_name: string;
+  email: string;
+  phone_number: string | null;
+  role: string;
+  is_active: boolean;
+  kyc_status: string;
+  created_at: string;
+  updated_at: string;
+  latest_payment_status: string | null;
+  latest_payment_amount: string | null;
+  latest_payment_date: string | null;
+}
+
+export interface AdminMembersResponse {
+  users: AdminUserRow[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+// ---------------------------------------------------------------------------
 // API error shape
 // ---------------------------------------------------------------------------
 

@@ -8,6 +8,7 @@ import {
   Briefcase,
   ChevronRight,
   CreditCard,
+  FileCheck,
   Globe,
   LayoutDashboard,
   Lock,
@@ -37,8 +38,9 @@ interface NavItem {
 
 const ACCOUNT_NAV: NavItem[] = [
   { label: "Dashboard",      href: "/dashboard",          icon: LayoutDashboard },
+  { label: "Admin",          href: "/admin",              icon: ShieldCheck, requiredRole: "admin" },
   { label: "Payment",        href: "/dashboard/payment",  icon: CreditCard },
-  { label: "Verification",   href: "/dashboard/kyc",      icon: ShieldCheck },
+  { label: "Verification",   href: "/dashboard/kyc",      icon: FileCheck },
 ];
 
 const MODULE_NAV: NavItem[] = [
@@ -94,6 +96,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       ? roleOrder.indexOf(item.requiredRole)
       : 0;
     const isLocked = userLevel < requiredLevel;
+    
+    // Hide admin-only nav items from non-admin users
+    if (item.requiredRole === "admin" && user?.role !== "admin") {
+      return null;
+    }
+    
     const dest = isLocked ? "/dashboard/payment" : item.href;
 
     return (

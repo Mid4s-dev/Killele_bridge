@@ -206,6 +206,34 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 | `GET` | `/api/v1/coaching/resources` | Bearer + MEMBER role | List coaching resources |
 | `GET` | `/api/v1/coaching/resources/{id}` | Bearer + MEMBER role | Fetch a single resource |
 
+### Admin (admin role only)
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/members` | Bearer + ADMIN role | List all registered users with pagination and search |
+
+**Query Parameters:**
+- `page` (int, default: 1) — Page number (1-indexed)
+- `page_size` (int, default: 20, max: 100) — Items per page
+- `q` (string, optional) — Search by email, name, or phone (case-insensitive)
+- `sort_by` (string, default: "created_at") — Sort field: `created_at`, `email`, or `role`
+- `order` (string, default: "desc") — Sort order: `asc` or `desc`
+
+**Response includes:**
+- User ID, full name, email, phone number
+- Role (free / member / admin), active status, KYC status
+- Timestamps (created_at, updated_at)
+- Latest payment details (status, amount, date) if any payments exist
+- Pagination metadata (total, page, page_size, total_pages)
+
+**Security:** Returns `403 Forbidden` if the requesting user does not have the ADMIN role.
+
+**Example:**
+```bash
+curl -X GET "http://localhost:8000/api/v1/admin/members?page=1&page_size=20&q=jane" \
+  -H "Authorization: Bearer <admin_jwt_token>"
+```
+
 ### Health
 
 | Method | Path | Description |
@@ -262,6 +290,116 @@ Client                    Kilele Bridge API           IntaSend
 - No account sharing or credential relay mechanisms
 - No circumvention of third-party platform policies
 - No storage of raw identity documents
+
+---
+
+## Admin Access
+
+The admin dashboard provides platform administrators with a comprehensive view of all registered users, their membership status, payment history, and contact details.
+
+### Admin Dashboard UI
+
+Navigate to `/admin` in the frontend to access the admin dashboard. The route is protected — non-admin users are automatically redirected to the main dashboard.
+
+**Features:**
+- **User List Table:** Displays all registered users with:
+  - Full name, email, phone number
+  - Role badges (Admin / Active Member / Free Tier)
+  - Payment status indicators (complete, pending, failed, cancelled)
+  - Join date and last update timestamps
+- **Search:** Real-time search by email, name, or phone number
+- **Pagination:** Navigate through large user lists (20 users per page)
+- **Statistics:** Quick view of total users, active members, and free-tier accounts
+
+### Admin API Endpoint
+
+**Endpoint:** `GET /api/v1/admin/members`
+
+**Authentication:** Requires a valid JWT Bearer token with **ADMIN role**. Returns `403 Forbidden` for non-admin users.
+
+**Query Parameters:**
+- `page` (int, default: 1) — Page number (1-indexed)
+- `page_size` (int, default: 20, max: 100) — Items per page
+- `q` (string, optional) — Search term (filters by email, name, or phone)
+- `sort_by` (string, default: "created_at") — Sort field: `created_at`, `email`, or `role`
+- `order` (string, default: "desc") — Sort order: `asc` or `desc`
+
+**Response Format:**
+```json
+{
+  "users": [
+    {
+      "id": 1,
+      "full_name": "Jane Mwangi",
+      "email": "jane@example.co.ke",
+      "phone_number": "+254712345678",
+      "role": "member",
+      "is_active": true,
+      "kyc_status": "not_started",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-20T14:22:00Z",
+      "latest_payment_status": "complete",
+      "latest_payment_amount": "500.00",
+      "latest_payment_date": "2024-01-15T11:45:00Z"
+    }
+  ],
+  "total": 45,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 3
+}
+```
+
+### Designating an Admin User
+
+Admin users must be created directly in the MySQL database. **Never expose admin role assignment via a public API endpoint.**
+
+#### Option 1: Promote an existing user to admin
+
+```sql
+-- Find the user by email
+SELECT id, email, role FROM users WHERE email = 'admin@kilelebridge.co.ke';
+
+-- Promote to admin role
+UPDATE users SET role = 'admin' WHERE email = 'admin@kilelebridge.co.ke';
+```
+
+#### Option 2: Use the seed script (development only)
+
+```bash
+# Set admin credentials via environment variables
+ADMIN_SEED_EMAIL=admin@kilelebridge.co.ke \
+ADMIN_SEED_PASSWORD=YourStr0ngPass! \
+python scripts/db_init.py --seed-admin
+```
+
+The seed script creates a new user with the ADMIN role. It's safe to run multiple times — it skips if the email already exists.
+
+#### Option 3: Direct SQL insert (production)
+
+```sql
+-- Create admin user directly (replace with real bcrypt hash)
+-- Generate hash: python3 -c "from passlib.context import CryptContext; print(CryptContext(['bcrypt']).hash('YourPassword'))"
+
+INSERT INTO users (full_name, email, hashed_password, role, is_active, kyc_status, created_at, updated_at)
+VALUES (
+  'Admin User',
+  'admin@kilelebridge.co.ke',
+  '$2b$12$REPLACE_WITH_REAL_BCRYPT_HASH',
+  'admin',
+  1,
+  'not_started',
+  NOW(),
+  NOW()
+);
+```
+
+### Security Notes
+
+- **Admin endpoints return 403 for non-admin users** — the `require_admin` dependency checks the JWT payload and rejects requests if `user.role != "admin"`.
+- **No sensitive credential material is exposed** — hashed passwords are excluded from all API responses.
+- **Admin role cannot be self-assigned** — there is no registration or profile update endpoint that accepts a `role` field.
+- **Access control is enforced at the API layer** — the frontend role guard is a UX convenience, not a security boundary.
 
 ---
 

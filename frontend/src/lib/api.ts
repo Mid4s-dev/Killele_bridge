@@ -10,6 +10,7 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import Cookies from "js-cookie";
 import type {
+  AdminMembersResponse,
   AuthTokenResponse,
   CheckoutResponse,
   CoachingResource,
@@ -203,6 +204,24 @@ export const coachingApi = {
     const { data } = await http.get<CoachingResource>(
       `/coaching/resources/${id}`
     );
+    return data;
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Admin endpoints (admin role only)
+// ---------------------------------------------------------------------------
+export const adminApi = {
+  listMembers: async (params?: {
+    page?: number;
+    page_size?: number;
+    q?: string;
+    sort_by?: string;
+    order?: string;
+  }): Promise<AdminMembersResponse> => {
+    const { data } = await http.get<AdminMembersResponse>("/admin/members", {
+      params,
+    });
     return data;
   },
 };

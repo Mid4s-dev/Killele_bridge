@@ -24,7 +24,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.routers import auth, coaching, config, kyc, payments
+from app.routers import admin, auth, coaching, config, kyc, payments
 
 settings = get_settings()
 
@@ -165,6 +165,7 @@ app.include_router(auth.router,     prefix="/api/v1")
 app.include_router(payments.router, prefix="/api/v1")
 app.include_router(kyc.router,      prefix="/api/v1")
 app.include_router(coaching.router, prefix="/api/v1")
+app.include_router(admin.router,    prefix="/api/v1")   # admin-only, role-gated
 
 
 # ---------------------------------------------------------------------------
