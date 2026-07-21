@@ -1,17 +1,20 @@
 """
-Payment service — IntaSend checkout initiation and webhook processing.
+Payment service — IntaSend STK Push initiation and webhook processing.
 
 Security decisions
 ------------------
-1. Webhook authenticity is verified using HMAC-SHA256 against the
-   PAYMENT_WEBHOOK_SECRET from the environment. Requests without a valid
-   signature are rejected with HTTP 400 before any DB writes occur.
+1. Webhook authenticity is verified using HMAC-SHA256 against
+   PAYMENT_WEBHOOK_SECRET. Requests without a valid signature are
+   rejected with HTTP 400 before any DB writes occur.
 2. Role upgrades happen ONLY after signature verification AND a confirmed
    COMPLETE state from IntaSend — never on client-supplied data alone.
 3. All DB operations use SQLAlchemy ORM (parameterised) — no raw SQL.
+4. The PENDING idempotency guard always re-fires the STK push so the user
+   can retry without creating duplicate payment rows.
 """
 import hashlib
 import hmac
+import json
 import logging
 from decimal import Decimal
 
@@ -29,85 +32,103 @@ settings = get_settings()
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Helpers
 # ---------------------------------------------------------------------------
 
-def _format_phone_number(phone: str) -> str:
+def _format_phone(phone: str) -> str:
     """
-    Format phone number to IntaSend's expected format: 254XXXXXXXXX
-    
-    Handles:
-    - 0723335139 → 254723335139
-    - +254723335139 → 254723335139
-    - 254723335139 → 254723335139 (no change)
+    Normalise a Kenyan phone number to IntaSend's required format: 254XXXXXXXXX
+
+      07XXXXXXXX  → 254XXXXXXXXX
+      +2547XXXXXXX → 254XXXXXXXXX
+      2547XXXXXXXX → 2547XXXXXXXX  (no change)
     """
-    # Remove any whitespace
     phone = phone.strip().replace(" ", "")
-    
-    # Remove leading + if present
     if phone.startswith("+"):
         phone = phone[1:]
-    
-    # If starts with 0, replace with 254
     if phone.startswith("0"):
         phone = "254" + phone[1:]
-    
-    # If doesn't start with 254, prepend it
     if not phone.startswith("254"):
         phone = "254" + phone
-    
     return phone
 
 
-def _get_intasend_client() -> APIService:
-    """
-    Instantiate the IntaSend SDK client.
-    test_mode=True routes requests to the IntaSend sandbox.
-    """
+def _intasend_client() -> APIService:
+    """Return a configured IntaSend APIService, raising 503 if keys are missing."""
     if not settings.intasend_publishable_key or not settings.intasend_secret_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Payment gateway is not configured.",
         )
     return APIService(
-        publishable_key=settings.intasend_publishable_key,
         token=settings.intasend_secret_key,
+        publishable_key=settings.intasend_publishable_key,
         test=settings.intasend_test_mode,
     )
 
 
-def _verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
+def _send_stk_push(client: APIService, payment: Payment, phone: str, email: str) -> str:
     """
-    Validate that the webhook POST originated from IntaSend by comparing
-    the HMAC-SHA256 digest of the raw request body against the
-    X-IntaSend-Signature header value.
+    Fire an IntaSend M-Pesa STK push and return the invoice_id.
 
-    Returns True only when signatures match.
+    IntaSend STK push response shape:
+      {
+        "id": "<tracking-id>",
+        "invoice": {
+          "invoice_id": "<XXXXXXX>",
+          "state": "PENDING",
+          ...
+        },
+        ...
+      }
     """
-    expected = hmac.new(
-        settings.payment_webhook_secret.encode(),
-        raw_body,
-        hashlib.sha256,
-    ).hexdigest()
-    # compare_digest prevents timing-based attacks
-    return hmac.compare_digest(expected, signature_header)
+    formatted = _format_phone(phone)
+    logger.info(
+        "Sending STK push | payment_id=%s user_email=%s phone=%s amount=%s test=%s",
+        payment.id, email, formatted, settings.registration_fee_kes, settings.intasend_test_mode,
+    )
+
+    response = client.collect.mpesa_stk_push(
+        phone_number=formatted,
+        email=email,
+        amount=settings.registration_fee_kes,
+        narrative="Kilele Bridge registration fee",
+        api_ref=f"KILELE-REG-{payment.id}",
+    )
+
+    logger.info("IntaSend STK push response | payment_id=%s response=%s", payment.id, response)
+
+    # Extract the invoice_id — it lives inside the 'invoice' sub-object
+    invoice_id: str = (
+        response.get("invoice", {}).get("invoice_id")
+        or response.get("id")
+        or ""
+    )
+
+    if not invoice_id:
+        raise ValueError(f"IntaSend did not return an invoice_id. Full response: {response}")
+
+    return invoice_id
 
 
 # ---------------------------------------------------------------------------
 # Public service functions
 # ---------------------------------------------------------------------------
 
-def initiate_registration_payment(user: User, phone_number: str, db: Session) -> CheckoutResponse:
+def initiate_registration_payment(
+    user: User,
+    phone_number: str,
+    db: Session,
+) -> CheckoutResponse:
     """
-    Create an IntaSend STK Push for the registration fee.
+    Initiate (or re-initiate) an M-Pesa STK push for the registration fee.
 
-    Steps:
-    1. Guard against double-payment (idempotency).
-    2. Create a pending Payment row.
-    3. Call IntaSend to get a checkout URL.
-    4. Persist the invoice_id and return the checkout URL to the caller.
+    Idempotency rules:
+    - COMPLETE  → reject with 409; payment already done.
+    - PENDING   → re-fire the STK push using the existing payment row so the
+                  user can tap "Pay again" without creating duplicate rows.
+    - None/FAILED/CANCELLED → create a fresh payment row, then fire STK push.
     """
-    # Idempotency: if a pending or completed payment already exists, reuse it
     existing = (
         db.query(Payment)
         .filter(
@@ -116,105 +137,93 @@ def initiate_registration_payment(user: User, phone_number: str, db: Session) ->
         )
         .first()
     )
+
     if existing and existing.status == PaymentStatus.COMPLETE:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Registration fee has already been paid.",
         )
+
+    client = _intasend_client()
+
+    # Re-use the existing PENDING row and re-send the STK push
     if existing and existing.status == PaymentStatus.PENDING:
-        # Return the existing pending checkout rather than creating a duplicate
-        return CheckoutResponse(
-            payment_id=existing.id,
-            invoice_id=existing.invoice_id or "",
-            checkout_url=settings.payment_redirect_url,
-            amount=existing.amount,
-            currency=existing.currency,
+        payment = existing
+        logger.info("Re-sending STK push for existing payment | payment_id=%s", payment.id)
+    else:
+        # Create a fresh PENDING row
+        payment = Payment(
+            user_id=user.id,
+            amount=Decimal(str(settings.registration_fee_kes)),
+            currency="KES",
+            status=PaymentStatus.PENDING,
         )
+        db.add(payment)
+        db.commit()
+        db.refresh(payment)
 
-    # 1. Create a PENDING payment record first — captured before any external call
-    payment = Payment(
-        user_id=user.id,
-        amount=Decimal(str(settings.registration_fee_kes)),
-        currency="KES",
-        status=PaymentStatus.PENDING,
-    )
-    db.add(payment)
-    db.commit()
-    db.refresh(payment)
-
-    # 2. Call IntaSend STK Push API
     try:
-        client = _get_intasend_client()
-        # Format phone number to 254XXXXXXXXX format
-        formatted_phone = _format_phone_number(phone_number)
-        logger.info(f"Initiating STK push for user {user.id} to phone {formatted_phone}")
-        
-        # IntaSend STK push returns a response with tracking_id
-        response = client.collect.mpesa_stk_push(
-            phone_number=formatted_phone,
-            email=user.email,
-            amount=settings.registration_fee_kes,
-            narrative=f"Kilele Bridge registration fee - User {user.id}",
-            api_ref=f"KILELE-REG-{payment.id}",  # Add reference for tracking
-        )
-        logger.info(f"IntaSend STK push response: {response}")
-        # Extract invoice/tracking ID from response
-        # IntaSend returns: {"invoice": {"invoice_id": "...", ...}, "id": "...", ...}
-        invoice_id: str = response.get("invoice", {}).get("invoice_id") or response.get("id", "")
-        # For STK push, there's no checkout URL - payment happens on user's phone
-        checkout_url: str = settings.payment_redirect_url
+        invoice_id = _send_stk_push(client, payment, phone_number, user.email)
     except Exception as exc:
-        logger.error("IntaSend checkout initiation failed for user %s: %s", user.id, exc)
-        # Mark payment as failed so the user can retry cleanly
+        logger.error(
+            "STK push failed | payment_id=%s error=%s", payment.id, exc, exc_info=True
+        )
         payment.status = PaymentStatus.FAILED
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Payment gateway is unavailable. Please try again shortly.",
+            detail=f"Payment gateway error: {exc}",
         ) from exc
 
-    # 3. Persist IntaSend references
     payment.invoice_id = invoice_id
     db.commit()
 
     return CheckoutResponse(
         payment_id=payment.id,
         invoice_id=invoice_id,
-        checkout_url=checkout_url,
+        checkout_url=settings.payment_redirect_url,
         amount=payment.amount,
         currency=payment.currency,
     )
 
 
-def process_webhook(
-    raw_body: bytes,
-    signature_header: str,
-    db: Session,
-) -> dict:
+def process_webhook(raw_body: bytes, signature_header: str, db: Session) -> dict:
     """
     Handle an incoming IntaSend webhook event.
 
-    Security:
-    - Signature is verified BEFORE any payload is parsed or DB is touched.
-    - Role upgrade only occurs when state == COMPLETE.
-    - All updates use ORM queries — no dynamic SQL.
+    IntaSend webhook POST body for STK push events:
+      {
+        "invoice_id": "XXXXXXX",
+        "state":      "COMPLETE" | "FAILED" | "CANCELLED" | "PENDING" | "RETRY",
+        "value":      "500.00",
+        "account":    "254XXXXXXXXX",
+        "api_ref":    "KILELE-REG-3",
+        ...
+      }
+
+    Security: signature is verified before any payload is parsed or DB touched.
     """
     if not settings.payment_webhook_secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Payment webhook is not configured.",
+            detail="Payment webhook secret is not configured.",
         )
 
-    # ── 1. Verify signature ──────────────────────────────────────────────────
-    if not _verify_webhook_signature(raw_body, signature_header):
-        logger.warning("Webhook received with invalid signature — rejected.")
+    # 1. Verify HMAC-SHA256 signature
+    expected_sig = hmac.new(
+        settings.payment_webhook_secret.encode(),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected_sig, signature_header):
+        logger.warning("Webhook rejected: invalid signature")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid webhook signature.",
         )
 
-    # ── 2. Parse payload ─────────────────────────────────────────────────────
-    import json
+    # 2. Parse payload
     try:
         body_dict = json.loads(raw_body)
         payload = IntaSendWebhookPayload.model_validate(body_dict)
@@ -225,44 +234,44 @@ def process_webhook(
             detail="Malformed webhook payload.",
         ) from exc
 
-    # ── 3. Look up the Payment record by invoice_id ───────────────────────────
+    logger.info(
+        "Webhook received | invoice_id=%s state=%s", payload.invoice_id, payload.state
+    )
+
+    # 3. Look up payment by invoice_id
     payment = (
         db.query(Payment)
         .filter(Payment.invoice_id == payload.invoice_id)
         .first()
     )
     if payment is None:
-        # Unknown invoice — log and acknowledge (IntaSend retries on non-200)
-        logger.warning("Webhook for unknown invoice_id: %s", payload.invoice_id)
+        # Unknown invoice — acknowledge so IntaSend doesn't keep retrying
+        logger.warning("Webhook ignored: unknown invoice_id=%s", payload.invoice_id)
         return {"status": "ignored", "reason": "unknown invoice"}
 
     state = payload.state.upper()
 
-    # ── 4. Update payment status ──────────────────────────────────────────────
+    # 4. Update payment status and conditionally upgrade user role
     if state == "COMPLETE":
         payment.status = PaymentStatus.COMPLETE
-
-        # ── 5. Upgrade user role to MEMBER ───────────────────────────────────
         user = db.get(User, payment.user_id)
         if user and user.role == UserRole.FREE:
             user.role = UserRole.MEMBER
             logger.info(
-                "User %s upgraded to MEMBER after payment %s completed.",
-                user.id,
-                payment.id,
+                "User upgraded to MEMBER | user_id=%s payment_id=%s",
+                user.id, payment.id,
             )
-
     elif state == "FAILED":
         payment.status = PaymentStatus.FAILED
-        logger.info("Payment %s marked FAILED by webhook.", payment.id)
-
+        logger.info("Payment FAILED | payment_id=%s", payment.id)
     elif state == "CANCELLED":
         payment.status = PaymentStatus.CANCELLED
-        logger.info("Payment %s marked CANCELLED by webhook.", payment.id)
-
+        logger.info("Payment CANCELLED | payment_id=%s", payment.id)
     else:
-        # PENDING / RETRY — no state change needed, just acknowledge
-        logger.debug("Webhook for invoice %s in state %s — no action.", payload.invoice_id, state)
+        # PENDING / RETRY — no action needed, just acknowledge
+        logger.debug(
+            "Webhook no-op | invoice_id=%s state=%s", payload.invoice_id, state
+        )
 
     db.commit()
     return {"status": "ok"}
