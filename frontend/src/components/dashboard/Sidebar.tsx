@@ -85,8 +85,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Image
               src="/logo.png"
               alt="Kilele Bridge"
-              width={110}
-              height={32}
+              width={80}
+              height={24}
               className="brightness-0 invert object-contain"
             />
           </Link>

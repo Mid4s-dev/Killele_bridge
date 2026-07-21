@@ -2,23 +2,30 @@ build:
   docker:
     web: Dockerfile
   config:
-    # Baked into the Next.js JS bundle at image-build time.
-    # Same-origin serving means /api/v1 resolves to the same dyno.
+    # These ARGs are baked into the Next.js static bundle at build time.
+    # NEXT_PUBLIC_API_URL: /api/v1 means all fetch() calls resolve to the
+    # same Heroku dyno — no absolute URL, no CORS issues.
+    #
+    # NEXT_PUBLIC_REGISTRATION_FEE_KES is the *build-time fallback* only.
+    # The frontend fetches the live value from GET /api/v1/config on every
+    # page load, so changing REGISTRATION_FEE_KES on the server takes
+    # effect immediately without a rebuild.
     NEXT_PUBLIC_API_URL: /api/v1
-    NEXT_PUBLIC_REGISTRATION_FEE_KES: ${REGISTRATION_FEE_KES}
+    NEXT_PUBLIC_REGISTRATION_FEE_KES: "100"
 
 release:
-  # Runs inside a fresh copy of the web image before the dyno restarts.
-  # Applies any pending Alembic migrations against the production database.
+  # Runs inside the web image before the dyno starts.
+  # Applies any pending Alembic schema migrations.
   image: web
   command:
     - /app/release.sh
 
 run:
-  web: gunicorn app.main:app
+  web: >-
+    gunicorn app.main:app
     --worker-class uvicorn.workers.UvicornWorker
-    --workers ${WEB_CONCURRENCY:-1}
-    --bind 0.0.0.0:${PORT:-8000}
+    --workers 1
+    --bind 0.0.0.0:$PORT
     --timeout 120
     --keep-alive 5
     --log-level info

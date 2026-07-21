@@ -107,7 +107,7 @@ export default function HomePage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <Link href="/home" className="flex items-center gap-2 shrink-0">
-            <Image src="/logo.png" alt="Kilele Bridge" width={130} height={36} priority className="object-contain" />
+            <Image src="/logo.png" alt="Kilele Bridge" width={100} height={28} priority className="object-contain" />
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/login">
@@ -311,7 +311,7 @@ export default function HomePage() {
       <footer className="border-t bg-background py-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <Image src="/logo.png" alt="Kilele Bridge" width={110} height={32} className="object-contain" />
+            <Image src="/logo.png" alt="Kilele Bridge" width={80} height={24} className="object-contain" />
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
               <Link href="/terms"   className="hover:text-foreground transition-colors">Terms</Link>
               <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>

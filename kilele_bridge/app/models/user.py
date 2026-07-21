@@ -24,6 +24,14 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
 
 
+class KycStatus(str, enum.Enum):
+    """Tracks identity verification progress."""
+    NOT_STARTED     = "not_started"
+    PENDING         = "pending"
+    VERIFIED        = "verified"
+    ACTION_REQUIRED = "action_required"
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
@@ -33,9 +41,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Identity — store minimal PII
-    full_name = Column(String(120), nullable=False)
-    email = Column(String(254), nullable=False, index=True)
-    phone_number = Column(String(20), nullable=True)
+    full_name     = Column(String(120), nullable=False)
+    email         = Column(String(254), nullable=False, index=True)
+    phone_number  = Column(String(20),  nullable=True)
 
     # Security — bcrypt hash only; plaintext password is NEVER stored
     hashed_password = Column(String(72), nullable=False)
@@ -48,6 +56,14 @@ class User(Base):
         server_default=UserRole.FREE.value,
     )
     is_active = Column(Boolean, nullable=False, default=True, server_default="1")
+
+    # KYC
+    kyc_status = Column(
+        Enum(KycStatus, name="kyc_status_enum", values_callable=lambda obj: [e.value for e in obj]),
+        nullable=False,
+        default=KycStatus.NOT_STARTED,
+        server_default=KycStatus.NOT_STARTED.value,
+    )
 
     # Timestamps (UTC)
     created_at = Column(

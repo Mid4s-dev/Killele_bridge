@@ -74,9 +74,38 @@ async def payment_webhook(
 
 
 @router.get(
+    "/my",
+    response_model=PaymentStatusResponse,
+    summary="Return the current user's most recent payment record",
+)
+def get_my_payment(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> PaymentStatusResponse:
+    """
+    Convenience endpoint — returns the latest payment for the authenticated
+    user so the dashboard can show status without needing a stored payment ID.
+
+    Returns 404 if the user has never initiated a payment.
+    """
+    payment = (
+        db.query(Payment)
+        .filter(Payment.user_id == current_user.id)
+        .order_by(Payment.created_at.desc())
+        .first()
+    )
+    if payment is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No payment record found.",
+        )
+    return PaymentStatusResponse.model_validate(payment)
+
+
+@router.get(
     "/status/{payment_id}",
     response_model=PaymentStatusResponse,
-    summary="Poll the status of a specific payment",
+    summary="Poll the status of a specific payment by ID",
 )
 def get_payment_status(
     payment_id: int,

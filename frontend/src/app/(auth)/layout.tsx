@@ -30,8 +30,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <Image
               src="/logo.png"
               alt="Kilele Bridge"
-              width={140}
-              height={40}
+              width={90}
+              height={28}
               className="brightness-0 invert"
             />
           </div>
@@ -86,7 +86,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex flex-col min-h-screen bg-background">
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center justify-center pt-8 pb-4">
-          <Image src="/logo.png" alt="Kilele Bridge" width={130} height={38} />
+          <Image src="/logo.png" alt="Kilele Bridge" width={100} height={30} />
         </div>
 
         <div className="flex-1 flex items-center justify-center px-6 py-10">
