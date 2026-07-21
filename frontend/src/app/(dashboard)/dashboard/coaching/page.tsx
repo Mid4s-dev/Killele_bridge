@@ -149,23 +149,36 @@ function PaywallOverlay() {
 
       {/* Overlay card */}
       <div className="absolute inset-0 flex items-center justify-center px-4">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl border shadow-xl p-8 text-center max-w-sm w-full space-y-5">
+        <div className="bg-white/97 backdrop-blur-sm rounded-2xl border shadow-2xl p-8 text-center max-w-sm w-full space-y-5">
           <div className="flex justify-center">
-            <div className="w-14 h-14 rounded-full bg-brand-100 flex items-center justify-center">
-              <Lock className="h-7 w-7 text-brand-500" />
+            <div className="w-14 h-14 rounded-full bg-gold-100 flex items-center justify-center ring-4 ring-gold-200">
+              <Lock className="h-7 w-7 text-gold-600" />
             </div>
           </div>
           <div>
             <h3 className="font-display text-lg font-bold">Members Only</h3>
             <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-              Unlock all coaching resources, guides, and templates with a one-time
-              KES 100 membership fee.
+              Unlock the full Coaching Library, AI Training Academy, Peer
+              Connection, Account Marketplace, and Platform Guides with a
+              one-time KES 500 membership fee.
             </p>
           </div>
+          <div className="space-y-2 text-left text-xs text-muted-foreground">
+            {["Coaching Library — 40+ guides & templates",
+              "AI Training Academy — RLHF, LiDAR & annotation",
+              "Account Marketplace — apprenticeship matching",
+              "Platform Guides — Upwork, Fiverr & Toptal setup",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-growth-500 shrink-0" />
+                {item}
+              </div>
+            ))}
+          </div>
           <Link href="/dashboard/payment">
-            <Button size="lg" className="w-full gap-2">
+            <Button size="lg" className="w-full gap-2 bg-gold-500 hover:bg-gold-600 text-white">
               <Zap className="h-4 w-4" />
-              Activate for KES 100
+              Activate Membership — KES 500
             </Button>
           </Link>
           <p className="text-xs text-muted-foreground">
@@ -279,7 +292,7 @@ export default function CoachingPage() {
             <p className="text-xs text-muted-foreground hidden sm:block">
               {isMember
                 ? `${resources.length} resources available`
-                : "Unlock with membership"}
+                : "Activate for KES 500 · One-time fee"}
             </p>
           </div>
         </div>
@@ -299,7 +312,7 @@ export default function CoachingPage() {
                 {isMember ? "Your Coaching Library" : "Coaching Library"}
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Expert-curated guides, templates, and strategies for Kenyan freelancers.
+                Expert-curated guides, templates, and strategies for Kenyan freelancers building digital careers.
               </p>
             </div>
             {isMember && !isLoading && (

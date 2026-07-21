@@ -39,6 +39,32 @@ const config: Config = {
           800: "#14532d",
           900: "#052e16",
         },
+        // Savannah gold — warm accent for CTAs and highlights
+        gold: {
+          50:  "#fffbeb",
+          100: "#fef3c7",
+          200: "#fde68a",
+          300: "#fcd34d",
+          400: "#fbbf24",
+          500: "#d97706",  // savannah gold
+          600: "#b45309",
+          700: "#92400e",
+          800: "#78350f",
+          900: "#451a03",
+        },
+        // Sunset orange — secondary warm accent
+        sunset: {
+          50:  "#fff7ed",
+          100: "#ffedd5",
+          200: "#fed7aa",
+          300: "#fdba74",
+          400: "#fb923c",
+          500: "#ea580c",  // sunset orange
+          600: "#c2410c",
+          700: "#9a3412",
+          800: "#7c2d12",
+          900: "#431407",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
