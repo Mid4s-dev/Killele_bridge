@@ -41,7 +41,7 @@ class Payment(Base):
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(3), nullable=False, default="KES")
     status = Column(
-        Enum(PaymentStatus, name="payment_status_enum"),
+        Enum(PaymentStatus, name="payment_status_enum", values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=PaymentStatus.PENDING,
         server_default=PaymentStatus.PENDING.value,
